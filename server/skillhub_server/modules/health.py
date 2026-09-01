@@ -7,6 +7,7 @@ import os
 from ..core.config import settings
 from ..core.quality import (LONG_BODY_LINES, SHORT_DESC_CHARS, body_lines)
 from ..core.db import get_conn
+from ..core.i18n import tr
 from ..core.jobs import last_runs
 
 router = APIRouter(prefix="/health", tags=["health"])
@@ -18,22 +19,20 @@ def WHITELIST():
 
 
 @router.get("/findings")
-def findings():
+def findings(lang: str = "en"):
     conn = get_conn()
     sections = []
 
     # First, because everything below it is only as fresh as these three runs.
     # A failed sync or scan used to be visible only in `docker logs`, so the
     # dashboard would keep showing yesterday's numbers with nothing to say so.
-    jobs = last_runs()
+    jobs = last_runs(lang)
     bad = [j for j in jobs if j["status"] in ("failed", "stuck")]
     sections.append({
         "key": "background_jobs",
         "severity": "error" if bad else "info",
-        "title": "后台任务",
-        "hint": ("库索引同步、上游更新检查、安全审查扫描都在后台跑。"
-                 "本页其余数字的新鲜度取决于它们——失败了这里会红，"
-                 "其余各节则会安静地陈旧下去。"),
+        "title": tr(lang, "he.jobs.title"),
+        "hint": tr(lang, "he.jobs.hint"),
         # count is the item count here as in every other section; whether to
         # worry is what the severity chip says
         "count": len(jobs), "items": jobs,
@@ -53,17 +52,14 @@ def findings():
 
     sections.append({
         "key": "loose_entities", "severity": "warn",
-        "title": "散落的实体技能（无人管理的副本）",
-        "hint": ("既不是软链、也不随任何仓库分发——改了真源不会同步，"
-                 "按管理规则应入库后改软链。"),
+        "title": tr(lang, "he.loose.title"),
+        "hint": tr(lang, "he.loose.hint"),
         "count": len(loose), "items": loose,
     })
     sections.append({
         "key": "vendored_entities", "severity": "info",
-        "title": "随项目仓库分发的实体技能",
-        "hint": ("被所在 git 仓库跟踪，属于该项目的一部分（上游常同时发布到 "
-                 ".claude/skills 与 .agents/skills 以兼容多个工具）。"
-                 "更新方式是在该仓库 git pull，无需纳管。"),
+        "title": tr(lang, "he.vendored.title"),
+        "hint": tr(lang, "he.vendored.hint"),
         "count": len(vendored), "items": vendored,
     })
 
@@ -72,10 +68,8 @@ def findings():
         "FROM installs WHERE active=1 AND link_type='broken'").fetchall()]
     sections.append({
         "key": "broken_links", "severity": "error",
-        "title": "断链的技能软链（真源已被移动或删除）",
-        "hint": ("目标不在了，但它所属的目录树还在——所以这是这一条的问题，"
-                 "不是整个卷没挂上。处理：skill doctor 复核后，"
-                 "不再用的删掉该软链，还要用的重新 skill load 指到新位置。"),
+        "title": tr(lang, "he.broken.title"),
+        "hint": tr(lang, "he.broken.hint"),
         "count": len(broken), "items": broken,
     })
 
@@ -88,9 +82,8 @@ def findings():
         "FROM installs WHERE active=1 AND link_type='unrooted'").fetchall()]
     sections.append({
         "key": "unrooted_links", "severity": "info",
-        "title": "无法判定的技能软链（真源整树不可达）",
-        "hint": ("目标连同它所属的目录树一起不在——多为 NAS 未挂载。"
-                 "挂上后重新上报即可，无需处理技能本身。"),
+        "title": tr(lang, "he.unrooted.title"),
+        "hint": tr(lang, "he.unrooted.hint"),
         "count": len(unrooted), "items": unrooted,
     })
 
@@ -100,8 +93,8 @@ def findings():
         "GROUP BY skill_key ORDER BY n DESC").fetchall()]
     sections.append({
         "key": "unresolved_usage", "severity": "info",
-        "title": "有调用记录但未对应到库内技能",
-        "hint": "多为 marketplace 插件技能或未入库技能；如需纳管可入库后自动归并。",
+        "title": tr(lang, "he.unresolved.title"),
+        "hint": tr(lang, "he.unresolved.hint"),
         "count": len(unresolved), "items": unresolved,
     })
 
@@ -120,9 +113,8 @@ def findings():
     drifted = [d for d in dupes if d["drifted"]]
     sections.append({
         "key": "duplicate_copies", "severity": "warn" if drifted else "info",
-        "title": "同一技能的多份实体副本（不含仓库自带）",
-        "hint": ("内容不一致的副本已标出——它们已各自漂移，无法判断哪份是最新。"
-                 "改为软链到库内真源可一次性消除。"),
+        "title": tr(lang, "he.dupes.title"),
+        "hint": tr(lang, "he.dupes.hint"),
         "count": len(dupes), "items": dupes,
     })
 
@@ -146,10 +138,8 @@ def findings():
                     unindexed.append({"path": f"{base_name}/{rel}"})
         sections.append({
             "key": "unindexed_skills", "severity": "warn",
-            "title": "库内存在但索引文件没收录的技能目录",
-            "hint": ("这些目录含 SKILL.md 却不在配置的索引文件里——通常是索引生成器"
-                     "的扫描深度不够。修索引工具，或改用 Hub 内置扫描"
-                     "（不设 SKILLHUB_LIBRARY_INDEX 即可）。"),
+            "title": tr(lang, "he.unindexed.title"),
+            "hint": tr(lang, "he.unindexed.hint"),
             "count": len(unindexed), "items": unindexed,
         })
 
@@ -161,11 +151,8 @@ def findings():
         (SHORT_DESC_CHARS,)).fetchall()]
     sections.append({
         "key": "thin_descriptions", "severity": "warn",
-        "title": "描述过短的技能（触发效果差）",
-        "hint": (f"description 不足 {SHORT_DESC_CHARS} 字符，难以承载「何时触发」的信息。"
-                 "官方指出模型倾向于「触发不足」，描述应同时写清做什么与何时用。"
-                 "（此处已按 SKILL.md 原文计算：skills-index.json 对 YAML 块标量"
-                 "描述只存下一个 | 字符，直接读索引会误报。）"),
+        "title": tr(lang, "he.thin.title"),
+        "hint": tr(lang, "he.thin.hint", n=SHORT_DESC_CHARS),
         "count": len(thin), "items": thin,
     })
 
@@ -174,13 +161,13 @@ def findings():
         "ORDER BY body_lines DESC", (LONG_BODY_LINES,)).fetchall()]
     sections.append({
         "key": "oversized_bodies", "severity": "info",
-        "title": f"SKILL.md 正文超过 {LONG_BODY_LINES} 行",
-        "hint": "技能触发时正文整体进入上下文；过长会挤占其他内容，建议拆到 references/ 按需加载。",
+        "title": tr(lang, "he.oversized.title", n=LONG_BODY_LINES),
+        "hint": tr(lang, "he.oversized.hint"),
         "count": len(oversized), "items": oversized,
     })
 
     from .vetting import findings_map
-    vets = findings_map()
+    vets = findings_map(lang)
     risky = []
     for sid, v in vets.items():
         for f in v["findings"]:
@@ -192,10 +179,8 @@ def findings():
     risky.sort(key=lambda x: x["id"])
     sections.append({
         "key": "safety_high", "severity": "warn",
-        "title": "安全审查：高危信号",
-        "hint": ("技能是别人写的、由你的 agent 以你的权限运行的代码。"
-                 "这些是确定性规则命中的高危项（凭据/隐私、外发、执行提权），"
-                 "是信号不是判决——联网技能里出现 curl 本就正常，但值得你亲眼看一眼。"),
+        "title": tr(lang, "he.safety.title"),
+        "hint": tr(lang, "he.safety.hint"),
         "count": len(risky), "items": risky,
     })
 
@@ -207,8 +192,8 @@ def findings():
         "ORDER BY s.id").fetchall()]
     sections.append({
         "key": "idle_skills", "severity": "info",
-        "title": "库内技能：无调用记录且当前未载入",
-        "hint": "并非问题——调用统计仅覆盖已接入的数据源与时间窗；可作为清理/归档参考。",
+        "title": tr(lang, "he.idle.title"),
+        "hint": tr(lang, "he.idle.hint"),
         "count": len(never), "items": never,
     })
 

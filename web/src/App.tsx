@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Switch, Tabs } from '@heroui/react';
 import { MODULES } from './modules/registry';
+import { LangSwitch } from './components/LangSwitch';
+import { useT } from './lib/i18n';
 
 function useTheme() {
   const [dark, setDark] = useState(() =>
@@ -16,7 +18,7 @@ function useTheme() {
 
 // The URL hash carries navigation state: `#health` selects a tab,
 // `#health/broken_links` additionally targets a section inside it. Before
-// this, a refresh always dumped the user back on 总览 and there was no way to
+// this, a refresh always dumped the user back on the overview and there was no way to
 // hand someone a link to "the broken links list" — for a LAN dashboard whose
 // findings get discussed across machines, the address bar is the cheapest
 // deep-linking mechanism there is.
@@ -44,31 +46,33 @@ function useHashTab() {
 export default function App() {
   const { dark, toggle } = useTheme();
   const { tab, select } = useHashTab();
+  const t = useT();
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-      <header className="mb-6 flex items-center justify-between gap-4">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Skillhub</h1>
-          <p className="text-sm text-foreground/60">
-            本地技能总揽 — 库存 · 载入拓扑 · 调用记录
-          </p>
+          <p className="text-sm text-foreground/60">{t('app.subtitle')}</p>
         </div>
-        <Switch isSelected={dark} onChange={toggle}>
-          <Switch.Content>
-            <Switch.Control>
-              <Switch.Thumb />
-            </Switch.Control>
-            <span className="whitespace-nowrap">深色</span>
-          </Switch.Content>
-        </Switch>
+        <div className="flex items-center gap-3">
+          <LangSwitch />
+          <Switch isSelected={dark} onChange={toggle}>
+            <Switch.Content>
+              <Switch.Control>
+                <Switch.Thumb />
+              </Switch.Control>
+              <span className="whitespace-nowrap">{t('app.dark')}</span>
+            </Switch.Content>
+          </Switch>
+        </div>
       </header>
 
       <Tabs selectedKey={tab} onSelectionChange={(k) => select(String(k))}>
         <Tabs.ListContainer>
-          <Tabs.List aria-label="模块">
+          <Tabs.List aria-label={t('app.modules')}>
             {MODULES.map((m) => (
               <Tabs.Tab key={m.key} id={m.key}>
-                {m.label}
+                {t(m.label)}
                 <Tabs.Indicator />
               </Tabs.Tab>
             ))}

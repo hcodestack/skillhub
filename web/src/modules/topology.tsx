@@ -3,17 +3,18 @@ import {
   Button, Card, Chip, Label, ListBox, SearchField, Select, Spinner, Switch,
 } from '@heroui/react';
 import {
-  agentLabel, useApi, SOURCE_LABEL, type Install, type SkillItem, type Tiles,
+  agentLabel, useApi, sourceLabel, type Install, type SkillItem, type Tiles,
 } from '../lib/api';
 import { PathChain } from '../lib/paths';
 import { LinkDocToggle } from '../lib/linkDoc';
+import { categoryLabel, t, useT, vendorLabel, type MsgKey } from '../lib/i18n';
 
 /* Colors carry ONE job here: how a skill is attached. The split matters for
  * governance: a copy committed inside someone's repo is not the same finding as
  * a copy nobody owns. Vendored copies are informational rather than a problem,
  * so they take the categorical blue slot, not a status hue.
  *
- * 软链 is GREEN (user request, 2026-09-02) — the healthy majority now reads as
+ * The symlink series is GREEN (user request, 2026-09-02) — the healthy majority reads as
  * healthy. In light mode it keeps the de-emphasis wash (.40 alpha), which also
  * resolves the classic green↔orange deutan trap through lightness: effective
  * post-alpha colors validate at ΔE ≥ 11.5 all-pairs CVD. Dark mode CANNOT use
@@ -25,31 +26,28 @@ import { LinkDocToggle } from '../lib/linkDoc';
  * Values live in styles.css (:root) because the health-page explainer shares
  * them; numbers from a CVD palette validator on the effective colors. */
 const LINK_KINDS = [
-  {
-    key: 'symlink', label: '软链', color: 'var(--sh-link-ok)',
-    note: '指向库内真源，更新一次处处生效',
-  },
-  {
-    key: 'vendored', label: '仓库自带', color: 'var(--sh-link-vendored)',
-    note: '随所在 git 仓库分发（上游常同时发布到 .claude/skills 与 .agents/skills 以兼容多工具）——更新靠在该仓库 git pull，无需纳管',
-  },
-  {
-    key: 'entity', label: '散落实体', color: '#ec835a',
-    note: '既不是链接、也不随任何仓库分发的独立拷贝，改真源不会同步，久了会各自漂移',
-  },
-  {
-    key: 'broken', label: '断链', color: '#d03b3b',
-    note: '软链指向的目标已不存在（真源被移动或删除后旧链接没清理）——该工具里这个技能实际用不了',
-  },
-] as const;
+  { key: 'symlink', label: 'link.symlink', color: 'var(--sh-link-ok)',
+    note: 'link.note.symlink' },
+  { key: 'vendored', label: 'link.vendored', color: 'var(--sh-link-vendored)',
+    note: 'link.note.vendored' },
+  { key: 'entity', label: 'link.entity', color: '#ec835a',
+    note: 'link.note.entity' },
+  { key: 'broken', label: 'link.broken', color: '#d03b3b',
+    note: 'link.note.broken' },
+] as const satisfies readonly {
+  key: string; label: MsgKey; color: string; note: MsgKey;
+}[];
 
 const COLOR_OF: Record<string, string> = Object.fromEntries(
   LINK_KINDS.map((k) => [k.key, k.color]));
 
 type GroupBy = 'tag' | 'vendor' | 'source';
-const GROUP_LABEL: Record<GroupBy, string> = {
-  tag: '领域', vendor: '厂商', source: '真源类别',
+const GROUP_KEY: Record<GroupBy, MsgKey> = {
+  tag: 'to.group.tag', vendor: 'to.group.vendor', source: 'to.group.source',
 };
+/** Group headings double as node ids, so they are resolved (not keyed) here —
+ * two groups must never collapse into one because they share a key. */
+const groupName = (by: GroupBy) => t(GROUP_KEY[by]);
 
 /* One screen per level of the hierarchy, held in a history stack so the view can
  * be stepped back and forth like pages — a drill-down that only goes deeper
@@ -64,6 +62,11 @@ type RightMeta = {
   agent: string; scope: string; project: string; sharedWith: string;
 };
 type Node = { id: string; total: number; y: number; h: number };
+
+/* The folded node is a synthetic left-hand id, not a skill: it must stay
+ * recognisable later (it is not clickable), so it carries a marker prefix
+ * instead of being matched by its own translated text. */
+const FOLDED_PREFIX = '\u0002folded:';
 
 const NODE_W = 168;
 const ROW_GAP = 6;
@@ -124,12 +127,13 @@ function labelYs(nodes: Node[], height: number,
 }
 
 function groupOf(it: SkillItem, by: GroupBy): string {
-  if (by === 'vendor') return it.category || '未分类';
-  if (by === 'source') return SOURCE_LABEL[it.source] ?? it.source;
-  return it.tags[0] ?? '未分类';
+  if (by === 'vendor') return vendorLabel(it.category) || t('common.uncategorized');
+  if (by === 'source') return sourceLabel(it.source);
+  return it.tags[0] ? categoryLabel(it.tags[0]) : t('common.uncategorized');
 }
 
 export default function Topology() {
+  const t = useT();
   const { data: skills } = useApi<{ items: SkillItem[] }>('/skills');
   const { data: tilesData } = useApi<Tiles>('/stats/tiles');
   const items = skills?.items ?? null;
@@ -218,7 +222,7 @@ export default function Topology() {
       folded = seen.size - keep.size;
       const merged = new Map<string, Flow>();
       for (const fl of list) {
-        const from = keep.has(fl.from) ? fl.from : `其他 ${folded} 个技能`;
+        const from = keep.has(fl.from) ? fl.from : FOLDED_PREFIX + folded;
         const k = `${from}${fl.to}${fl.kind}`;
         const p = merged.get(k);
         if (p) p.count += fl.count;
@@ -256,18 +260,25 @@ export default function Topology() {
     };
   }, [items, q, tool, problemsOnly, view]);
 
+  /** Left-hand node ids are display values already, except the synthetic
+   * folded node, which carries a count to render. */
+  const leftLabel = (id: string) =>
+    (id.startsWith(FOLDED_PREFIX)
+      ? t('to.foldedNode', { n: id.slice(FOLDED_PREFIX.length) })
+      : id);
+
   const rightLabel = (id: string) => {
     const m = model.meta.get(id);
     if (!m) return { main: id, sub: '' };
     return {
       main: agentLabel(m.agent),
-      sub: m.scope === 'global' ? '全局'
-        : m.project ? `项目 · ${m.project}` : '项目',
+      sub: m.scope === 'global' ? t('common.global')
+        : m.project ? t('to.scope.project', { name: m.project }) : t('common.project'),
     };
   };
 
   if (!items) {
-    return <div className="flex justify-center py-20"><Spinner aria-label="加载中" /></div>;
+    return <div className="flex justify-center py-20"><Spinner aria-label={t('common.loading')} /></div>;
   }
 
   const { flows, folded, detail, matched, leftIds, rightIds, totalsL, totalsR } = model;
@@ -330,7 +341,7 @@ export default function Topology() {
   const totalInstalls = flows.reduce((a, f) => a + f.count, 0);
 
   const onLeftClick = (id: string) => {
-    if (id.startsWith('其他 ')) return;
+    if (id.startsWith(FOLDED_PREFIX)) return;
     if (view.kind === 'groups') go({ kind: 'group', by: view.by, value: id });
     else if (view.kind === 'group') {
       const it = model.skillOf.get(id);
@@ -341,7 +352,7 @@ export default function Topology() {
 
   const crumbs = hist.slice(0, idx + 1).map((v, i) => ({
     i,
-    label: v.kind === 'groups' ? `全部技能（按${GROUP_LABEL[v.by]}）`
+    label: v.kind === 'groups' ? t('to.all', { by: groupName(v.by) })
       : v.kind === 'group' ? v.value : v.name,
   }));
 
@@ -352,10 +363,10 @@ export default function Topology() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="ghost" isDisabled={idx === 0}
-          onPress={() => jumpTo(idx - 1)}>← 后退</Button>
+          onPress={() => jumpTo(idx - 1)}>{t('to.back')}</Button>
         <Button size="sm" variant="ghost" isDisabled={idx >= hist.length - 1}
-          onPress={() => jumpTo(idx + 1)}>前进 →</Button>
-        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="层级路径">
+          onPress={() => jumpTo(idx + 1)}>{t('to.forward')}</Button>
+        <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label={t('to.breadcrumb')}>
           {crumbs.map((c, i) => (
             <span key={c.i} className="flex items-center gap-1">
               {i > 0 && <span className="text-foreground/30">›</span>}
@@ -371,45 +382,47 @@ export default function Topology() {
           ))}
         </nav>
         <span className="ml-auto text-sm text-foreground/60">
-          {matched} 个技能 · {totalInstalls} 处载入
+          {t('to.summary', { skills: matched, loads: totalInstalls })}
         </span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <SearchField aria-label="搜索技能" value={q} onChange={setQ} className="w-64">
+        <SearchField aria-label={t('ov.search')} value={q} onChange={setQ} className="w-64">
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder="搜索技能" />
+            <SearchField.Input placeholder={t('ov.search')} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
         {view.kind === 'groups' && (
-          <Select aria-label="分组方式" selectedKey={view.by}
+          <Select aria-label={t('to.groupBy.label')} selectedKey={view.by}
             onSelectionChange={(k) => { setHist([{ kind: 'groups', by: k as GroupBy }]); setIdx(0); }}
             className="w-44">
             <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
             <Select.Popover>
               <ListBox>
                 {(['tag', 'vendor', 'source'] as GroupBy[]).map((g) => (
-                  <ListBox.Item key={g} id={g} textValue={`按${GROUP_LABEL[g]}分组`}>
-                    <Label>{`按${GROUP_LABEL[g]}分组`}</Label><ListBox.ItemIndicator />
+                  <ListBox.Item key={g} id={g}
+                                textValue={t('to.groupBy', { by: groupName(g) })}>
+                    <Label>{t('to.groupBy', { by: groupName(g) })}</Label>
+                    <ListBox.ItemIndicator />
                   </ListBox.Item>
                 ))}
               </ListBox>
             </Select.Popover>
           </Select>
         )}
-        <Select aria-label="工具" selectedKey={tool}
+        <Select aria-label={t('ov.filter.tool')} selectedKey={tool}
           onSelectionChange={(k) => setTool(String(k))} className="w-48">
           <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
           <Select.Popover>
             <ListBox>
-              <ListBox.Item id="all" textValue="工具：全部">
-                <Label>工具：全部</Label><ListBox.ItemIndicator />
+              <ListBox.Item id="all" textValue={t('ov.filter.tool.all')}>
+                <Label>{t('ov.filter.tool.all')}</Label><ListBox.ItemIndicator />
               </ListBox.Item>
               {toolOptions.map(([a, n]) => (
                 <ListBox.Item key={a} id={a} textValue={agentLabel(a)}>
-                  <Label>{`${agentLabel(a)}（${n}）`}</Label><ListBox.ItemIndicator />
+                  <Label>{`${agentLabel(a)} (${n})`}</Label><ListBox.ItemIndicator />
                 </ListBox.Item>
               ))}
             </ListBox>
@@ -418,49 +431,49 @@ export default function Topology() {
         <Switch isSelected={problemsOnly} onChange={setProblemsOnly}>
           <Switch.Content>
             <Switch.Control><Switch.Thumb /></Switch.Control>
-            只看问题
+            {t('to.problemsOnly')}
           </Switch.Content>
         </Switch>
         <Switch isSelected={asTable} onChange={setAsTable}>
           <Switch.Content>
             <Switch.Control><Switch.Thumb /></Switch.Control>
-            表格
+            {t('to.table')}
           </Switch.Content>
         </Switch>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 gap-y-2">
         {LINK_KINDS.map((k) => (
-          <span key={k.key} className="sh-topo flex items-center gap-1.5" title={k.note}>
+          <span key={k.key} className="sh-topo flex items-center gap-1.5" title={t(k.note)}>
             <span className="h-2.5 w-5 rounded-sm" style={{ background: k.color }} />
-            <span className="text-xs text-foreground/70">{k.label}</span>
+            <span className="text-xs text-foreground/70">{t(k.label)}</span>
           </span>
         ))}
         <LinkDocToggle />
         <span className="text-xs text-foreground/60">
-          {view.kind === 'groups' ? `左列：${GROUP_LABEL[view.by]}（点击进入）`
-            : view.kind === 'group' ? '左列：技能（点击查看它连到哪里）'
-              : '左列：该技能 · 右列：每一处载入'}
-          {folded > 0 ? ` · 已折叠 ${folded} 个低频技能` : ''}
+          {view.kind === 'groups' ? t('to.hint.groups', { by: groupName(view.by) })
+            : view.kind === 'group' ? t('to.hint.group')
+              : t('to.hint.skill')}
+          {folded > 0 ? t('to.folded', { n: folded }) : ''}
         </span>
       </div>
 
       <Card>
         <Card.Content className="p-3">
           {flows.length === 0 ? (
-            <p className="py-16 text-center text-sm text-foreground/60">没有匹配的载入关系。</p>
+            <p className="py-16 text-center text-sm text-foreground/60">{t('to.empty')}</p>
           ) : asTable ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-foreground/10 text-left text-xs text-foreground/60">
                     <th className="py-1.5 pr-3 font-medium">
-                      {view.kind === 'groups' ? GROUP_LABEL[view.by] : '技能'}
+                      {view.kind === 'groups' ? groupName(view.by) : t('to.col.skill')}
                     </th>
-                    <th className="py-1.5 pr-3 font-medium">工具</th>
-                    <th className="py-1.5 pr-3 font-medium">作用域</th>
-                    <th className="py-1.5 pr-3 font-medium">载入方式</th>
-                    <th className="py-1.5 font-medium">数量</th>
+                    <th className="py-1.5 pr-3 font-medium">{t('to.col.tool')}</th>
+                    <th className="py-1.5 pr-3 font-medium">{t('to.col.scope')}</th>
+                    <th className="py-1.5 pr-3 font-medium">{t('to.col.kind')}</th>
+                    <th className="py-1.5 font-medium">{t('to.col.count')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -469,14 +482,14 @@ export default function Topology() {
                     const k = LINK_KINDS.find((x) => x.key === f.kind);
                     return (
                       <tr key={i} className="border-b border-foreground/5">
-                        <td className="py-1.5 pr-3">{f.from}</td>
+                        <td className="py-1.5 pr-3">{leftLabel(f.from)}</td>
                         <td className="py-1.5 pr-3">{r.main}</td>
                         <td className="py-1.5 pr-3 text-foreground/65">{r.sub}</td>
                         <td className="py-1.5 pr-3 sh-topo">
                           <span className="inline-flex items-center gap-1.5">
                             <span className="h-2 w-3 rounded-sm"
                               style={{ background: k?.color }} />
-                            {k?.label ?? f.kind}
+                            {k ? t(k.label) : f.kind}
                           </span>
                         </td>
                         <td className="py-1.5 tabular-nums">{f.count}</td>
@@ -489,7 +502,7 @@ export default function Topology() {
           ) : (
             <div className="overflow-x-auto sh-topo">
               <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}
-                role="img" aria-label="技能载入拓扑图"
+                role="img" aria-label={t('to.chart')}
                 onMouseLeave={() => setHover(null)}>
                 {paths.map((p, i) => (
                   <g key={i} onMouseEnter={() => setHover(p.f)}
@@ -503,7 +516,7 @@ export default function Topology() {
                   const n = left.get(id)!;
                   const ly = leftLabelY.get(id)!;
                   const off = Math.abs(ly - (n.y + n.h / 2)) > 6;
-                  const canDrill = drillable && !id.startsWith('其他 ');
+                  const canDrill = drillable && !id.startsWith(FOLDED_PREFIX);
                   return (
                     <g key={id} style={{ cursor: canDrill ? 'pointer' : 'default' }}
                       onClick={canDrill ? () => onLeftClick(id) : undefined}>
@@ -517,7 +530,7 @@ export default function Topology() {
                         className="fill-foreground text-[12px]"
                         style={canDrill ? { textDecoration: 'underline',
                           textUnderlineOffset: 3, textDecorationColor: 'rgb(128 128 128 / .5)' } : undefined}>
-                        {clip(id, 24)}
+                        {clip(leftLabel(id), 24)}
                       </text>
                       <text x={NODE_W - 14} y={ly + 9} textAnchor="end"
                         className="fill-foreground/45 text-[10px]">{n.total}</text>
@@ -554,7 +567,7 @@ export default function Topology() {
                         </text>
 
                         {shared && (
-                          <title>{`此目录由 ${shared} 共用`}</title>
+                          <title>{t('to.sharedBy', { list: shared })}</title>
                         )}
                       </g>,
                     );
@@ -562,7 +575,8 @@ export default function Topology() {
                       out.push(
                         <text key={`s-${agent}`} x={x + 16} y={top + 22}
                           className="fill-foreground/45 text-[9.5px]">
-                          {clip(`${shared.split(', ').length} 个工具共用：${shared}`, 40)}
+                          {clip(t('to.sharedCount',
+                            { n: shared.split(', ').length, list: shared }), 40)}
                         </text>,
                       );
                     }
@@ -600,8 +614,10 @@ export default function Topology() {
       {view.kind === 'skill' && detail.length > 0 && (
         <Card>
           <Card.Header className="pb-2">
-            <Card.Title className="text-base">实际链接位置（{detail.length}）</Card.Title>
-            <Card.Description>每一处入口的真实路径，以及它解析到的目标。</Card.Description>
+            <Card.Title className="text-base">
+              {t('to.detail.title', { n: detail.length })}
+            </Card.Title>
+            <Card.Description>{t('to.detail.desc')}</Card.Description>
           </Card.Header>
           <Card.Content>
             <ul className="flex flex-col gap-2.5">
@@ -612,7 +628,7 @@ export default function Topology() {
                     <Chip size="sm" className={ins.scope === 'global'
                       ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
                       : 'bg-foreground/10 text-foreground/65'}>
-                      {ins.scope === 'global' ? '全局' : '项目'}
+                      {t(ins.scope === 'global' ? 'common.global' : 'common.project')}
                     </Chip>
                     {(() => {
                       const k = ins.link_type === 'entity'
@@ -624,7 +640,7 @@ export default function Topology() {
                           title={meta?.note}>
                           <span className="h-2 w-3 rounded-sm"
                             style={{ background: COLOR_OF[k] }} />
-                          {meta?.label}
+                          {meta ? t(meta.label) : k}
                         </span>
                       );
                     })()}
@@ -642,16 +658,21 @@ export default function Topology() {
       <div className="min-h-[2.5rem]">
         {hover && (
           <div className="sh-topo rounded-lg border border-foreground/10 bg-foreground/[0.03] px-3 py-2 text-sm">
-            <span className="font-medium">{hover.from}</span>
+            <span className="font-medium">{leftLabel(hover.from)}</span>
             <span className="mx-2 text-foreground/40">{'→'}</span>
             <span>{rightLabel(hover.to).main}</span>
-            <span className="ml-1 text-foreground/60">（{rightLabel(hover.to).sub}）</span>
+            <span className="ml-1 text-foreground/60"> ({rightLabel(hover.to).sub})</span>
             <span className="mx-2 inline-flex items-center gap-1.5">
               <span className="h-2 w-3 rounded-sm"
                 style={{ background: COLOR_OF[hover.kind] }} />
-              {LINK_KINDS.find((k) => k.key === hover.kind)?.label}
+              {(() => {
+                const hk = LINK_KINDS.find((x) => x.key === hover.kind);
+                return hk ? t(hk.label) : hover.kind;
+              })()}
             </span>
-            <span className="tabular-nums text-foreground/70">{hover.count} 处</span>
+            <span className="tabular-nums text-foreground/70">
+              {t('to.hover.count', { n: hover.count })}
+            </span>
           </div>
         )}
       </div>

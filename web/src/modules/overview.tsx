@@ -3,11 +3,12 @@ import {
   Card, Chip, Label, ListBox, SearchField, Select, Spinner, Table,
 } from '@heroui/react';
 import {
-  agentLabel, fmtRel, SOURCE_LABEL, useApi, type SkillItem, type Tiles,
+  agentLabel, fmtRel, sourceLabel, useApi, type SkillItem, type Tiles,
 } from '../lib/api';
 import { AgentChips } from '../components/AgentChips';
 import { prettyPath } from '../lib/paths';
 import { SkillDrawer } from '../components/SkillDrawer';
+import { categoryLabel, useT, vendorLabel } from '../lib/i18n';
 
 type SortDesc = { column: string | number; direction: 'ascending' | 'descending' };
 
@@ -70,6 +71,7 @@ function Filter({ label, value, onChange, options, width = 'w-40' }: {
 }
 
 export default function Overview() {
+  const t = useT();
   const { data: tiles } = useApi<Tiles>('/stats/tiles');
   const { data: skills } = useApi<{ items: SkillItem[] }>('/skills');
   const items = skills?.items ?? [];
@@ -90,7 +92,10 @@ export default function Overview() {
 
   const categories = useMemo(() => {
     const set = new Map<string, number>();
-    for (const it of items) set.set(it.category || '未分类', (set.get(it.category || '未分类') ?? 0) + 1);
+    for (const it of items) {
+      const c = it.category || 'uncategorized';
+      set.set(c, (set.get(c) ?? 0) + 1);
+    }
     return [...set.entries()].sort((a, b) => b[1] - a[1]);
   }, [items]);
 
@@ -99,7 +104,7 @@ export default function Overview() {
     return items.filter((it) => {
       if (source !== 'all' && it.source !== source) return false;
       if (agent !== 'all' && !it.agents.includes(agent)) return false;
-      if (category !== 'all' && (it.category || '未分类') !== category) return false;
+      if (category !== 'all' && (it.category || 'uncategorized') !== category) return false;
       if (loadedOnly === 'loaded' && it.installs.length === 0) return false;
       if (loadedOnly === 'used' && it.usage.total === 0) return false;
       if (loadedOnly === 'unused' && it.usage.total > 0) return false;
@@ -134,76 +139,81 @@ export default function Overview() {
   }, [filtered, sort]);
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Spinner aria-label="加载中" /></div>;
+    return <div className="flex justify-center py-20"><Spinner aria-label={t('common.loading')} /></div>;
   }
 
   return (
     <div className="flex flex-col gap-5">
       {tiles && (
         <div className="flex flex-wrap gap-3">
-          <Tile label="库内技能" value={tiles.library_total} />
-          <Tile label="已载入（去重）" value={tiles.loaded_skills} href="#topology" />
-          <Tile label="累计调用" value={tiles.events_total} />
-          <Tile label="近 7 天调用" value={tiles.events_d7} />
-          <Tile label="散落实体" value={tiles.loose_entries}
+          <Tile label={t('ov.tile.library')} value={tiles.library_total} />
+          <Tile label={t('ov.tile.loaded')} value={tiles.loaded_skills} href="#topology" />
+          <Tile label={t('ov.tile.events')} value={tiles.events_total} />
+          <Tile label={t('ov.tile.events7')} value={tiles.events_d7} />
+          <Tile label={t('ov.tile.loose')} value={tiles.loose_entries}
                 tone={tiles.loose_entries > 0 ? 'warn' : undefined}
                 href="#health/loose_entities"
-                title="无人管理的实体副本 — 点击查看明细" />
-          <Tile label="断链" value={tiles.broken_links}
+                title={t('ov.tile.loose.title')} />
+          <Tile label={t('ov.tile.broken')} value={tiles.broken_links}
                 tone={tiles.broken_links > 0 ? 'error' : undefined}
                 href="#health/broken_links"
-                title="真源已被移动或删除的软链 — 点击查看明细" />
-          <Tile label="工具" value={tiles.tools} href="#hosts" />
-          <Tile label="主机" value={tiles.hosts} href="#hosts" />
-          <Tile label="常驻元数据 tokens" value={`~${(tiles.metadata_tokens / 1000).toFixed(1)}k`}
-                title="已载入技能的 name+description 每轮对话都常驻上下文；这是其体积估算" />
+                title={t('ov.tile.broken.title')} />
+          <Tile label={t('ov.tile.tools')} value={tiles.tools} href="#hosts" />
+          <Tile label={t('ov.tile.hosts')} value={tiles.hosts} href="#hosts" />
+          <Tile label={t('ov.tile.tokens')} value={`~${(tiles.metadata_tokens / 1000).toFixed(1)}k`}
+                title={t('ov.tile.tokens.title')} />
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
         <SearchField
-          aria-label="搜索技能"
+          aria-label={t('ov.search')}
           value={q}
           onChange={setQ}
           className="w-64"
         >
           <SearchField.Group>
             <SearchField.SearchIcon />
-            <SearchField.Input placeholder="搜索 id / 名称 / 描述 / 标签" />
+            <SearchField.Input placeholder={t('ov.search.placeholder')} />
             <SearchField.ClearButton />
           </SearchField.Group>
         </SearchField>
-        <Filter label="来源" value={source} onChange={setSource} options={[
-          { id: 'all', label: '来源：全部' },
-          { id: 'organized', label: SOURCE_LABEL.organized },
-          { id: 'self-made', label: SOURCE_LABEL['self-made'] },
-          { id: 'installer', label: SOURCE_LABEL.installer },
-          { id: 'unmanaged', label: SOURCE_LABEL.unmanaged },
-          { id: 'unresolved', label: SOURCE_LABEL.unresolved },
+        <Filter label={t('ov.filter.source')} value={source} onChange={setSource} options={[
+          { id: 'all', label: t('ov.filter.source.all') },
+          { id: 'organized', label: sourceLabel('organized') },
+          { id: 'self-made', label: sourceLabel('self-made') },
+          { id: 'installer', label: sourceLabel('installer') },
+          { id: 'unmanaged', label: sourceLabel('unmanaged') },
+          { id: 'unresolved', label: sourceLabel('unresolved') },
         ]} />
-        <Filter label="工具" value={agent} onChange={setAgent} width="w-48" options={[
-          { id: 'all', label: '工具：全部' },
-          ...agentOptions.map(([a, n]) => ({ id: a, label: `${agentLabel(a)}（${n}）` })),
+        <Filter label={t('ov.filter.tool')} value={agent} onChange={setAgent} width="w-48" options={[
+          { id: 'all', label: t('ov.filter.tool.all') },
+          ...agentOptions.map(([a, n]) => ({ id: a, label: `${agentLabel(a)} (${n})` })),
         ]} />
-        <Filter label="分类" value={category} onChange={setCategory} width="w-44" options={[
-          { id: 'all', label: '分类：全部' },
-          ...categories.map(([c, n]) => ({ id: c, label: `${c}（${n}）` })),
+        <Filter label={t('ov.filter.category')} value={category} onChange={setCategory} width="w-44" options={[
+          { id: 'all', label: t('ov.filter.category.all') },
+          ...categories.map(([c, n]) => ({
+            id: c,
+            label: `${c === 'uncategorized' ? t('common.uncategorized') : vendorLabel(c)} (${n})`,
+          })),
         ]} />
-        <Filter label="状态" value={loadedOnly} onChange={setLoadedOnly} width="w-36" options={[
-          { id: 'all', label: '状态：全部' },
-          { id: 'loaded', label: '已载入' },
-          { id: 'used', label: '有调用' },
-          { id: 'unused', label: '未使用' },
-          { id: 'behind', label: '有上游更新' },
-          { id: 'risky', label: '安全高危' },
+        <Filter label={t('ov.filter.state')} value={loadedOnly} onChange={setLoadedOnly} width="w-36" options={[
+          { id: 'all', label: t('ov.filter.state.all') },
+          { id: 'loaded', label: t('ov.filter.state.loaded') },
+          { id: 'used', label: t('ov.filter.state.used') },
+          { id: 'unused', label: t('ov.filter.state.unused') },
+          { id: 'behind', label: t('ov.filter.state.behind') },
+          { id: 'risky', label: t('ov.filter.state.risky') },
         ]} />
-        <span className="ml-auto text-sm text-foreground/60">{sorted.length} 项</span>
+        <span className="ml-auto text-sm text-foreground/60">
+          {t('ov.results', { n: sorted.length })}
+        </span>
       </div>
 
       <Table className="w-full">
         <Table.ScrollContainer>
           <Table.Content
-            aria-label="技能列表"
+            aria-label={t('ov.table')}
             sortDescriptor={sort}
             onSortChange={(d) => setSort(d as SortDesc)}
             onRowAction={(k) => {
@@ -215,44 +225,44 @@ export default function Overview() {
               <Table.Column id="name" isRowHeader allowsSorting>
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    技能
+                    {t('ov.col.skill')}
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
-              <Table.Column id="source">来源</Table.Column>
-              <Table.Column id="agents">Agents · 调用分布</Table.Column>
+              <Table.Column id="source">{t('ov.col.source')}</Table.Column>
+              <Table.Column id="agents">{t('ov.col.agents')}</Table.Column>
               <Table.Column id="installs" allowsSorting>
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    载入
+                    {t('ov.col.installs')}
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
               <Table.Column id="total" allowsSorting>
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    调用
+                    {t('ov.col.usage')}
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
               <Table.Column id="d7" allowsSorting>
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    7 天
+                    {t('ov.col.d7')}
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
               <Table.Column id="last" allowsSorting>
                 {({ sortDirection }) => (
                   <Table.SortableColumnHeader sortDirection={sortDirection}>
-                    最近调用
+                    {t('ov.col.last')}
                   </Table.SortableColumnHeader>
                 )}
               </Table.Column>
             </Table.Header>
             <Table.Body
               renderEmptyState={() => (
-                <div className="p-10 text-center text-foreground/60">没有匹配的技能</div>
+                <div className="p-10 text-center text-foreground/60">{t('ov.empty')}</div>
               )}
             >
               {sorted.map((it) => (
@@ -263,17 +273,17 @@ export default function Overview() {
                         <span className="truncate font-medium">{it.name}</span>
                         {!it.in_library && (
                           <Chip size="sm" className="shrink-0 bg-foreground/10 text-foreground/60">
-                            {it.source === 'unmanaged' ? '未纳管' : '外部'}
+                            {t(it.source === 'unmanaged' ? 'ov.chip.unmanaged' : 'ov.chip.external')}
                           </Chip>
                         )}
                         {it.vetting?.top_severity === 'high' && (
                           <Chip size="sm" className="shrink-0 bg-red-500/15 text-red-700 dark:text-red-300">
-                            高危
+                            {t('ov.chip.high')}
                           </Chip>
                         )}
                         {it.update?.state === 'behind' && (
                           <Chip size="sm" className="shrink-0 bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                            有更新
+                            {t('ov.chip.update')}
                           </Chip>
                         )}
                       </div>
@@ -283,9 +293,9 @@ export default function Overview() {
                       )}
                       {it.tags.length > 0 && (
                         <div className="mt-0.5 flex gap-1">
-                          {it.tags.map((t) => (
-                            <span key={t} className="rounded bg-sky-500/10 px-1 text-[11px] text-sky-700 dark:text-sky-300">
-                              {t}
+                          {it.tags.map((tag) => (
+                            <span key={tag} className="rounded bg-sky-500/10 px-1 text-[11px] text-sky-700 dark:text-sky-300">
+                              {categoryLabel(tag)}
                             </span>
                           ))}
                         </div>
@@ -294,7 +304,7 @@ export default function Overview() {
                   </Table.Cell>
                   <Table.Cell>
                     <span className="whitespace-nowrap text-sm text-foreground/70">
-                      {SOURCE_LABEL[it.source] ?? it.source}
+                      {sourceLabel(it.source)}
                     </span>
                   </Table.Cell>
                   <Table.Cell>
@@ -304,12 +314,14 @@ export default function Overview() {
                     {it.installs.length > 0 ? (
                       <span className="tabular-nums cursor-help"
                             title={it.installs
-                              .map((i) => `${i.host} · ${i.scope === 'global' ? '全局' : '项目'} · ${prettyPath(i.entry_path)}`)
+                              .map((i) => `${i.host} · ${t(i.scope === 'global' ? 'common.global' : 'common.project')} · ${prettyPath(i.entry_path)}`)
                               .join('\n')}>
                         {it.installs.length}
                         <span className="ml-1 text-xs text-foreground/60">
-                          ({it.installs.filter((i) => i.scope === 'global').length}全局
-                          /{it.installs.filter((i) => i.scope === 'project').length}项目)
+                          {' '}{t('ov.installs.split', {
+                            g: it.installs.filter((i) => i.scope === 'global').length,
+                            p: it.installs.filter((i) => i.scope === 'project').length,
+                          })}
                         </span>
                       </span>
                     ) : <span className="text-foreground/50">—</span>}

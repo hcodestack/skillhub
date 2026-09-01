@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Chip, Disclosure, Drawer, Spinner } from '@heroui/react';
 import {
-  agentLabel, api, fmtRel, SOURCE_LABEL, UPDATE_LABEL,
+  agentLabel, api, fmtRel, sourceLabel, updateLabel,
   type Install, type SkillItem, type UsageEvent,
 } from '../lib/api';
 import { AgentChip } from './AgentChips';
 import { CopyButton, PathChain, PathText, prettyPath } from '../lib/paths';
+import { categoryLabel, t as tr, useT, vendorLabel, type MsgKey } from '../lib/i18n';
 
-const LINK_LABEL: Record<string, string> = {
-  symlink: '软链', entity: '散落实体', vendored: '仓库自带', broken: '断链',
-};
-const LINK_NOTE: Record<string, string> = {
-  symlink: '指向库内真源，更新一次处处生效——目标状态，无需处理',
-  vendored: '项目仓库自带（作者提交进去的，克隆时就有）——随该仓库 git pull 更新，无需清理或纳管',
-  entity: '独立拷贝：改库内真源不会同步到它，多份副本会漂移——建议入库后换成 skill load 软链',
-  broken: '软链目标已不存在（真源被移动或删除）——不再用就删掉，还要用就重新 skill load',
-};
 const LINK_CLASS: Record<string, string> = {
   entity: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   vendored: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
@@ -34,7 +26,9 @@ const SEV_CLASS: Record<string, string> = {
   medium: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   low: 'bg-foreground/10 text-foreground/60',
 };
-const SEV_LABEL: Record<string, string> = { high: '高危', medium: '中', low: '低' };
+const SEV_KEY: Record<string, MsgKey> = {
+  high: 'sev.high', medium: 'sev.medium', low: 'sev.low',
+};
 
 const UPDATE_CLASS: Record<string, string> = {
   behind: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
@@ -50,14 +44,10 @@ const UPDATE_CLASS: Record<string, string> = {
 function evalPrompt(item: SkillItem): string {
   const p = item.library_path || item.installs[0]?.target_path
     || item.installs[0]?.entry_path || '';
-  return [
-    '使用 skill-creator 技能，评估这个技能并给出改进建议：',
-    `- 技能 id：${item.id ?? item.name}`,
-    p ? `- 路径：${p}` : '',
-    '请重点看：description 能否可靠触发（是否写清了「何时用」）、',
-    'SKILL.md 正文长度与结构是否合理、是否该把内容下沉到 references/。',
-    '如果值得，再设计 2-3 个测试用例并跑一轮带技能 vs 基线的对比。',
-  ].filter(Boolean).join('\n');
+  return tr('dr.eval.prompt', {
+    id: item.id ?? item.name,
+    path: p ? tr('dr.eval.promptPath', { path: p }) : '',
+  });
 }
 
 function Section({ title, count, children, defaultExpanded = true, hint }: {
@@ -95,7 +85,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+const LINK_LABEL: Record<string, MsgKey> = {
+  symlink: 'link.symlink', entity: 'link.entity',
+  vendored: 'link.vendored', broken: 'link.broken',
+};
+const LINK_NOTE: Record<string, MsgKey> = {
+  symlink: 'link.note.symlinkFull', vendored: 'link.note.vendoredFull',
+  entity: 'link.note.entityFull', broken: 'link.note.brokenFull',
+};
+
 function InstallRow({ ins, libraryRoot }: { ins: Install; libraryRoot: string }) {
+  const t = useT();
   return (
     <li className="border-t border-foreground/5 py-2 first:border-0">
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -103,11 +103,12 @@ function InstallRow({ ins, libraryRoot }: { ins: Install; libraryRoot: string })
         <Chip size="sm" className={ins.scope === 'global'
           ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300'
           : 'bg-foreground/10 text-foreground/65'}>
-          {ins.scope === 'global' ? '全局' : '项目'}
+          {t(ins.scope === 'global' ? 'common.global' : 'common.project')}
         </Chip>
         <Chip size="sm" className={LINK_CLASS[linkKind(ins)] ?? LINK_CLASS.symlink}
-              title={LINK_NOTE[linkKind(ins)]}>
-          {LINK_LABEL[linkKind(ins)] ?? ins.link_type}
+              title={LINK_NOTE[linkKind(ins)]
+                ? t(LINK_NOTE[linkKind(ins)]) : undefined}>
+          {LINK_LABEL[linkKind(ins)] ? t(LINK_LABEL[linkKind(ins)]) : ins.link_type}
         </Chip>
         {ins.scope === 'project' && ins.project_path && (
           <span className="truncate text-xs text-foreground/60"
@@ -119,7 +120,7 @@ function InstallRow({ ins, libraryRoot }: { ins: Install; libraryRoot: string })
       <PathChain from={ins.entry_path} to={ins.target_path} libraryRoot={libraryRoot} />
       {ins.shared_with && (
         <div className="mt-1 text-xs text-foreground/60">
-          此目录同时服务：{ins.shared_with}
+          {t('dr.installs.shared', { list: ins.shared_with })}
         </div>
       )}
     </li>
@@ -129,6 +130,7 @@ function InstallRow({ ins, libraryRoot }: { ins: Install; libraryRoot: string })
 export function SkillDrawer({ item, libraryRoot = '', onClose }: {
   item: SkillItem | null; libraryRoot?: string; onClose: () => void;
 }) {
+  const t = useT();
   const [events, setEvents] = useState<UsageEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -188,21 +190,25 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                   {/* identity */}
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Chip size="sm" className="bg-foreground/10">
-                      {SOURCE_LABEL[item.source] ?? item.source}
+                      {sourceLabel(item.source)}
                     </Chip>
                     {item.category && (
-                      <Chip size="sm" className="bg-foreground/10">{item.category}</Chip>
+                      <Chip size="sm" className="bg-foreground/10">
+                        {vendorLabel(item.category)}
+                      </Chip>
                     )}
-                    {item.tags.map((t) => (
-                      <Chip key={t} size="sm"
-                            className="bg-sky-500/15 text-sky-700 dark:text-sky-300">{t}</Chip>
+                    {item.tags.map((tag) => (
+                      <Chip key={tag} size="sm"
+                            className="bg-sky-500/15 text-sky-700 dark:text-sky-300">
+                        {categoryLabel(tag)}
+                      </Chip>
                     ))}
                     {item.vetting?.top_severity === 'high' && (
-                      <Chip size="sm" className={SEV_CLASS.high}>安全高危</Chip>
+                      <Chip size="sm" className={SEV_CLASS.high}>{t('dr.safety.chip')}</Chip>
                     )}
-                    {upd && UPDATE_LABEL[upd.state] && (
+                    {upd && updateLabel(upd.state) && (
                       <Chip size="sm" className={UPDATE_CLASS[upd.state] ?? 'bg-foreground/10'}>
-                        {UPDATE_LABEL[upd.state]}
+                        {updateLabel(upd.state)}
                       </Chip>
                     )}
                   </div>
@@ -210,20 +216,21 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                     <div className="font-mono text-xs text-foreground/60">{item.id}</div>
                   )}
                   <p className="text-sm leading-relaxed text-foreground/80">
-                    {item.description || '（无描述）'}
+                    {item.description || t('dr.noDescription')}
                   </p>
 
-                  <Section title="真源" hint={item.in_library ? '' : '未纳管，无库内真源'}>
+                  <Section title={t('dr.source')}
+                           hint={item.in_library ? '' : t('dr.source.unmanagedHint')}>
                     {srcPath ? (
                       <>
-                        <Field label="库内路径">
+                        <Field label={t('dr.source.path')}>
                           <div className="flex items-start gap-2">
                             <PathText path={srcPath} libraryRoot={libraryRoot} />
                             <CopyButton text={srcPath} />
                           </div>
                         </Field>
                         {upd?.origin && (
-                          <Field label="上游">
+                          <Field label={t('dr.source.upstream')}>
                             <a href={upd.origin} target="_blank" rel="noreferrer"
                                className="break-all text-xs text-sky-600 underline dark:text-sky-400">
                               {upd.origin}
@@ -237,12 +244,15 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                           </Field>
                         )}
                         {(item.body_lines ?? 0) > 0 && (
-                          <Field label="体量">
+                          <Field label={t('dr.source.size')}>
                             <span className="text-xs text-foreground/65">
-                              SKILL.md {item.body_lines} 行 · 描述 {item.desc_chars} 字符
+                              {t('dr.source.sizeValue', {
+                                lines: item.body_lines ?? 0,
+                                chars: item.desc_chars ?? 0,
+                              })}
                               {(item.body_lines ?? 0) > 500 && (
                                 <span className="ml-2 text-amber-600 dark:text-amber-400">
-                                  超过官方建议的 500 行
+                                  {t('dr.source.tooLong')}
                                 </span>
                               )}
                             </span>
@@ -251,25 +261,24 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                       </>
                     ) : (
                       <p className="text-sm text-foreground/60">
-                        这个技能只存在于工具入口目录，库内没有对应真源。
+                        {t('dr.source.entryOnly')}
                       </p>
                     )}
                   </Section>
 
                   {item.vetting && item.vetting.count > 0 && (
-                    <Section title="安全审查" count={item.vetting.count}
-                      hint={item.vetting.top_severity === 'high' ? '含高危信号' : ''}
+                    <Section title={t('dr.safety')} count={item.vetting.count}
+                      hint={item.vetting.top_severity === 'high' ? t('dr.safety.hasHigh') : ''}
                       defaultExpanded={item.vetting.top_severity === 'high'}>
                       <p className="mb-2 text-xs text-foreground/60">
-                        确定性规则命中，是信号不是判决——联网技能里出现 curl 本就正常，
-                        但值得你亲眼看一眼这几行。
+                        {t('dr.safety.note')}
                       </p>
                       <ul className="flex flex-col gap-2">
                         {item.vetting.findings.map((f, i) => (
                           <li key={i} className="border-t border-foreground/5 pt-2 first:border-0">
                             <div className="flex flex-wrap items-center gap-1.5">
                               <Chip size="sm" className={SEV_CLASS[f.severity] ?? SEV_CLASS.low}>
-                                {SEV_LABEL[f.severity] ?? f.severity}
+                                {SEV_KEY[f.severity] ? t(SEV_KEY[f.severity]) : f.severity}
                               </Chip>
                               <span className="text-xs text-foreground/60">{f.category}</span>
                               <span className="font-mono text-xs text-foreground/60">
@@ -286,16 +295,18 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                     </Section>
                   )}
 
-                  <Section title="载入位置" count={item.installs.length}>
+                  <Section title={t('dr.installs')} count={item.installs.length}>
                     {item.installs.length === 0 ? (
-                      <p className="text-sm text-foreground/60">当前未载入到任何入口。</p>
+                      <p className="text-sm text-foreground/60">{t('dr.installs.none')}</p>
                     ) : (
                       <div className="flex flex-col gap-3">
                         {byHost.map(([host, list]) => (
                           <div key={host}>
                             <div className="mb-0.5 flex items-baseline gap-2">
                               <span className="text-xs font-medium text-foreground/70">{host}</span>
-                              <span className="text-xs text-foreground/60">{list.length} 处</span>
+                              <span className="text-xs text-foreground/60">
+                                {t('dr.installs.count', { n: list.length })}
+                              </span>
                             </div>
                             <ul className="rounded-md bg-foreground/[0.03] px-2.5">
                               {list.map((ins, i) => (
@@ -308,12 +319,14 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                     )}
                   </Section>
 
-                  <Section title="调用记录" count={total} defaultExpanded={false}
-                           hint={item.usage.last ? `最近 ${fmtRel(item.usage.last)}` : '暂无调用'}>
+                  <Section title={t('dr.events')} count={total} defaultExpanded={false}
+                           hint={item.usage.last
+                             ? t('dr.events.last', { when: fmtRel(item.usage.last) })
+                             : t('dr.events.never')}>
                     {loading ? (
-                      <Spinner aria-label="加载中" />
+                      <Spinner aria-label={t('common.loading')} />
                     ) : events.length === 0 ? (
-                      <p className="text-sm text-foreground/60">暂无调用记录。</p>
+                      <p className="text-sm text-foreground/60">{t('dr.events.none')}</p>
                     ) : (
                       <ul className="flex flex-col gap-1">
                         {events.map((e, i) => (
@@ -333,15 +346,15 @@ export function SkillDrawer({ item, libraryRoot = '', onClose }: {
                     )}
                     {events.length < total && (
                       <Button size="sm" variant="ghost" className="mt-2" onPress={loadMore}>
-                        加载更多（{events.length}/{total}）
+                        {t('dr.events.more', { shown: events.length, total })}
                       </Button>
                     )}
                   </Section>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <CopyButton text={evalPrompt(item)} label="复制评估提示词" />
+                    <CopyButton text={evalPrompt(item)} label={t('dr.eval.copy')} />
                     <span className="text-xs text-foreground/60">
-                      粘进 Claude Code 用 skill-creator 评估（本看板不内置模型）
+                      {t('dr.eval.hint')}
                     </span>
                   </div>
                 </div>

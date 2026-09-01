@@ -7,6 +7,7 @@ from fastapi import APIRouter
 
 from ..core.config import settings
 from ..core.db import get_conn
+from ..core.i18n import tr
 from ..core.quality import est_tokens
 from .library import classify
 from .sources import status_map
@@ -24,7 +25,7 @@ def _item_key(skill_id: str | None, skill_key: str) -> str:
 
 
 @router.get("/skills")
-def list_skills():
+def list_skills(lang: str = "en"):
     conn = get_conn()
     items: dict[str, dict] = {}
 
@@ -53,8 +54,9 @@ def list_skills():
             it = items[key] = {
                 "key": key, "id": None,
                 "name": nm,
-                "description": r["skill_desc"] or "仅存在于入口目录，未对应到库内技能（未纳管）",
-                "source": "unmanaged", "category": "未纳管", "tags": utags,
+                "description": (r["skill_desc"]
+                                or tr(lang, "skill.unmanagedDesc")),
+                "source": "unmanaged", "category": "unmanaged", "tags": utags,
                 "in_library": False, "agents": [], "installs": [],
                 "usage": {"total": 0, "d7": 0, "d30": 0, "last": None},
                 "agent_usage": {},
@@ -92,8 +94,8 @@ def list_skills():
         if it is None:
             it = items[key] = {
                 "key": key, "id": None, "name": r["skill_key"],
-                "description": "有调用记录但无法对应到库内技能（可能是插件技能或外部技能）",
-                "source": "unresolved", "category": "外部/插件", "tags": [],
+                "description": tr(lang, "skill.unresolvedDesc"),
+                "source": "unresolved", "category": "external", "tags": [],
                 "in_library": False, "agents": [], "installs": [],
                 "usage": {"total": 0, "d7": 0, "d30": 0, "last": None},
                 "agent_usage": {},
@@ -108,7 +110,7 @@ def list_skills():
             it["agents"].append(r["agent"])
 
     srcs = status_map()
-    vets = findings_map()
+    vets = findings_map(lang)
     disp = settings.library_display_path
     for k, it in items.items():
         it["update"] = srcs.get(k)   # None = origin unknown, cannot be checked

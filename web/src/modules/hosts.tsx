@@ -1,15 +1,17 @@
 import { Card, Spinner } from '@heroui/react';
 import { fmtRel, useApi, AGENT_LABEL, type HostRow } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 export default function Hosts() {
+  const t = useT();
   const { data } = useApi<{ hosts: HostRow[] }>('/hosts');
   const hosts = data?.hosts ?? null;
 
   if (!hosts) {
-    return <div className="flex justify-center py-20"><Spinner aria-label="加载中" /></div>;
+    return <div className="flex justify-center py-20"><Spinner aria-label={t('common.loading')} /></div>;
   }
   if (!hosts.length) {
-    return <p className="py-16 text-center text-foreground/60">还没有主机上报过数据。</p>;
+    return <p className="py-16 text-center text-foreground/60">{t('ho.none')}</p>;
   }
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -18,7 +20,7 @@ export default function Hosts() {
           <Card.Header>
             <Card.Title>{h.id}</Card.Title>
             <Card.Description>
-              {h.os} · 最近上报 {fmtRel(h.last_report_at)}
+              {h.os} · {t('ho.lastReport', { when: fmtRel(h.last_report_at) })}
             </Card.Description>
           </Card.Header>
           <Card.Content>
@@ -27,12 +29,14 @@ export default function Hosts() {
                 <div key={a.agent} className="flex items-baseline justify-between">
                   <span>{AGENT_LABEL[a.agent] ?? a.agent}</span>
                   <span className="tabular-nums text-foreground/60">
-                    {a.entries} 入口（全局 {a.global_entries} / 项目 {a.project_entries}）
+                    {t('ho.entries', {
+                      n: a.entries, g: a.global_entries, p: a.project_entries,
+                    })}
                   </span>
                 </div>
               ))}
               <div className="mt-1 flex items-baseline justify-between border-t border-foreground/10 pt-1.5">
-                <span>累计调用</span>
+                <span>{t('ho.total')}</span>
                 <span className="tabular-nums">{h.events_total}</span>
               </div>
             </div>

@@ -26,6 +26,7 @@ from fastapi.responses import PlainTextResponse
 
 from ..core.config import settings
 from ..core.db import get_conn
+from ..core.i18n import tr
 from ..core.jobs import last_runs
 from ..core.vetting import skill_dir
 
@@ -45,7 +46,7 @@ def _library_display_dir(skill_id: str) -> str:
     return _display(d) if d else ""
 
 
-def build_plan() -> dict:
+def build_plan(lang: str = "en") -> dict:
     conn = get_conn()
     now = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -82,11 +83,8 @@ def build_plan() -> dict:
             "in_library_as": r["skill_id"] or "", "library_dir": lib,
             # judgment required (a local edit would be lost), hence commented
             # in the script and prose here
-            "suggestion": (
-                f"库内已有 {r['skill_id']}：确认这份副本没有本地改动后，"
-                f"删除并替换为指向库内真源的软链" if lib else
-                "库内没有对应技能：先复制入库（自制→Self-made/，第三方→Organized/），"
-                "再删除此副本、换软链"),
+            "suggestion": (tr(lang, "rep.loose.haveLib", id=r["skill_id"]) if lib
+                           else tr(lang, "rep.loose.noLib")),
             "replace_cmd": (f'rm -rf {shlex.quote(r["entry_path"])} && '
                             f'ln -s {shlex.quote(lib)} {shlex.quote(r["entry_path"])}'
                             if lib else ""),
@@ -111,7 +109,7 @@ def build_plan() -> dict:
     return {
         "generated_at": now,
         "hosts": hosts,
-        "jobs": last_runs(),
+        "jobs": last_runs(lang),
         "broken": broken,
         "loose": loose,
         "duplicates": dupes,
@@ -124,115 +122,114 @@ def build_plan() -> dict:
 
 
 @router.get("/plan")
-def plan():
-    return build_plan()
+def plan(lang: str = "en"):
+    return build_plan(lang)
 
 
 @router.get("/governance.md", response_class=PlainTextResponse)
-def governance_md() -> str:
-    p = build_plan()
+def governance_md(lang: str = "en") -> str:
+    p = build_plan(lang)
     t = p["totals"]
     L: list[str] = []
     w = L.append
-    w(f"# Skillhub 治理报告\n")
-    w(f"> 生成于 {p['generated_at']} · 主机：{', '.join(p['hosts']) or '—'}\n")
-    w("> 本报告可直接交给 Claude Code / Codex 执行：把文件内容贴给它，"
-      "或让它通过 skillhub MCP 的 `remediation_plan` 工具自取结构化数据。"
-      "所有清理都发生在技能所在的机器上——hub 是只读的，也够不着你的家目录。\n")
+    _ = lambda k, **kw: tr(lang, k, **kw)   # noqa: E731
+    w(_("rep.title"))
+    w(_("rep.generated", at=p["generated_at"], hosts=", ".join(p["hosts"]) or "—"))
+    w(_("rep.intro"))
 
-    w("## 概览\n")
-    w(f"| 断链 | 散落实体 | 重复副本（漂移） | 安全高危技能 |")
-    w(f"|---|---|---|---|")
-    w(f"| {t['broken']} | {t['loose']} | {t['duplicates']}（{t['drifted']}） "
+    w(_("rep.summary"))
+    w(f"| {_('rep.th.broken')} | {_('rep.th.loose')} | {_('rep.th.dupes')} "
+      f"| {_('rep.th.safety')} |")
+    w("|---|---|---|---|")
+    w(f"| {t['broken']} | {t['loose']} | {t['duplicates']} ({t['drifted']}) "
       f"| {t['safety_high']} |\n")
 
     bad_jobs = [j for j in p["jobs"] if j["status"] in ("failed", "stuck")]
     if bad_jobs:
-        w("**注意：以下后台任务不健康，本报告的数字可能陈旧：**")
+        w(_("rep.badJobs"))
         for j in bad_jobs:
-            w(f"- {j['label']}：{j['status']}（{j['error'] or j['detail']}）")
+            w(f"- {j['label']}: {j['status']} ({j['error'] or j['detail']})")
         w("")
 
-    w(f"## 断链（{t['broken']}）——需要清理\n")
+    w(_("rep.broken.h", n=t["broken"]))
     if p["broken"]:
-        w("软链还在、真源没了。删除是安全的（脚本会在执行时再次确认目标仍不存在）。"
-          "配套脚本：`/api/v1/report/remediation.sh`。\n")
-        w("| 工具 | 条目 | 失效路径 | 库内真源 |")
+        w(_("rep.broken.intro"))
+        w(_("rep.broken.cols"))
         w("|---|---|---|---|")
         for b in p["broken"]:
-            w(f"| {b['agent']} | {b['entry_name']} | `{b['entry_path']}` "
-              f"| {'`' + b['library_dir'] + '`' if b['library_dir'] else '（已不在库内）'} |")
+            lib = f"`{b['library_dir']}`" if b["library_dir"] else _("rep.broken.gone")
+            w(f"| {b['agent']} | {b['entry_name']} | `{b['entry_path']}` | {lib} |")
         w("")
     else:
-        w("无。\n")
+        w(_("rep.none"))
 
-    w(f"## 散落实体（{t['loose']}）——建议归置\n")
+    w(_("rep.loose.h", n=t["loose"]))
     if p["loose"]:
-        w("独立拷贝，改库内真源不会同步。**替换前需人工确认副本没有本地改动**，"
-          "所以下列命令在脚本里是注释状态。\n")
-        w("| 工具 | 条目 | 库内对应 | 建议 |")
+        w(_("rep.loose.intro"))
+        w(_("rep.loose.cols"))
         w("|---|---|---|---|")
         for e in p["loose"]:
             w(f"| {e['agent']} | {e['entry_name']} "
               f"| {e['in_library_as'] or '—'} | {e['suggestion']} |")
         w("")
     else:
-        w("无。\n")
+        w(_("rep.none"))
 
     if p["duplicates"]:
-        w(f"## 同一技能的多份副本（{t['duplicates']}，其中漂移 {t['drifted']}）\n")
+        w(_("rep.dupes.h", n=t["duplicates"], drifted=t["drifted"]))
         for d in p["duplicates"]:
-            mark = "**已漂移**" if d["drifted"] else "内容一致"
-            w(f"- {d['entry_name']}：{d['copies']} 份，{mark}"
-              + ("——先 diff 各份差异、合并回库内真源，再统一换软链" if d["drifted"] else ""))
+            mark = _("rep.dupes.drifted") if d["drifted"] else _("rep.dupes.identical")
+            w(_("rep.dupes.line", name=d["entry_name"], copies=d["copies"], mark=mark)
+              + (_("rep.dupes.advice") if d["drifted"] else ""))
         w("")
 
     if p["safety_high"]:
-        w(f"## 安全审查高危（{t['safety_high']} 个技能）\n")
-        w("确定性规则命中，是信号不是判决——逐个到看板「健康 → 安全审查」看具体证据。\n")
+        w(_("rep.safety.h", n=t["safety_high"]))
+        w(_("rep.safety.intro"))
         for r in p["safety_high"]:
-            w(f"- {r['skill_id']}（{r['findings']} 条命中）")
+            w(_("rep.safety.line", id=r["skill_id"], n=r["findings"]))
         w("")
 
     return "\n".join(L)
 
 
 @router.get("/remediation.sh", response_class=PlainTextResponse)
-def remediation_sh() -> str:
-    p = build_plan()
+def remediation_sh(lang: str = "en") -> str:
+    p = build_plan(lang)
     L: list[str] = []
     w = L.append
+    _ = lambda k, **kw: tr(lang, k, **kw)   # noqa: E731
     w("#!/usr/bin/env bash")
-    w(f"# Skillhub 断链清理脚本 · 生成于 {p['generated_at']}")
-    w(f"# 针对主机：{', '.join(p['hosts']) or '(无)'} —— 在那台机器上运行")
+    w(_("sh.title", at=p["generated_at"]))
+    w(_("sh.hosts", hosts=", ".join(p["hosts"]) or _("sh.none")))
     w("#")
-    w("# 未注释的命令只做一件可证明安全的事：删除「执行时仍然悬空」的软链")
-    w("# （-L 且 ! -e 才删；期间被修复的链接会自动跳过）。")
-    w("# 需要人工判断的操作（散落实体替换）全部以注释给出，逐条审阅后自行放开。")
+    w(_("sh.explain1"))
+    w(_("sh.explain2"))
+    w(_("sh.explain3"))
     w("set -u")
     w('removed=0; skipped=0')
     w("")
-    w(f"# ───── 第 1 部分：清理 {p['totals']['broken']} 条断链（安全，未注释）─────")
+    w(_("sh.part1", n=p["totals"]["broken"]))
     for b in p["broken"]:
         q = shlex.quote(b["entry_path"])
-        w(f"# {b['agent']} · {b['entry_name']} · 原指向 {b['old_target']}")
+        w(_("sh.wasPointing", agent=b["agent"], entry=b["entry_name"],
+            target=b["old_target"]))
         w(f'if [ -L {q} ] && [ ! -e {q} ]; then rm {q} && echo "removed  $ {q}" '
           f'&& removed=$((removed+1)); else echo "skipped  $ {q}"; '
           f'skipped=$((skipped+1)); fi')
     w("")
-    w('echo; echo "断链清理完成：removed=$removed skipped=$skipped"')
-    w('echo "跑一次上报让看板归零：python3 ~/.local/lib/skillhub-reporter/'
-      'skillhub_report.py 2>/dev/null || true"')
+    w(_("sh.doneEcho"))
+    w(_("sh.reportEcho"))
     w("")
     relink = [b for b in p["broken"] if b["relink_cmd"]]
     if relink:
-        w("# ───── 第 2 部分：这些技能库内仍有真源——还要用的话，取消注释重新链接 ─────")
+        w(_("sh.part2"))
         for b in relink:
             w(f"# {b['relink_cmd']}")
         w("")
     replace = [e for e in p["loose"] if e["replace_cmd"]]
     if replace:
-        w("# ───── 第 3 部分：散落实体 → 软链（需先确认副本无本地改动！默认注释）─────")
+        w(_("sh.part3"))
         for e in replace:
             w(f"# [{e['agent']}] {e['suggestion']}")
             w(f"# {e['replace_cmd']}")

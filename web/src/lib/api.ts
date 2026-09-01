@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getLang, t, useLang, type MsgKey } from './i18n';
 
 export type Install = {
   host: string; agent: string; scope: string; project_path: string;
@@ -30,24 +31,23 @@ export type SkillItem = {
   source: string; category: string; tags: string[]; in_library: boolean;
   agents: string[]; installs: Install[]; usage: Usage;
   agent_usage: Record<string, number>;
-  update: UpdateInfo | null;   // null = 上游来源未知，无法检查
+  update: UpdateInfo | null;   // null = upstream unknown, cannot be checked
   library_path: string;
   body_lines?: number;
   desc_chars?: number;
-  vetting: Vetting | null;   // null = 无命中或尚未扫描
+  vetting: Vetting | null;   // null = clean, or not scanned yet
 };
 
 export type SourceRow = UpdateInfo & { skill_id: string; name: string };
 
-export const UPDATE_LABEL: Record<string, string> = {
-  behind: '有更新',
-  current: '最新',
-  moved: '上游有新提交',
-  tracked: '已记录上游',
-  installer: '安装器管理',
-  error: '检查失败',
-  unknown: '未知',
-};
+const UPDATE_STATES = ['behind', 'current', 'moved', 'tracked',
+  'installer', 'error', 'unknown'];
+
+/** Display name for an upstream state; '' for a state we have no wording for
+ * (callers decide whether to fall back to the raw value or draw nothing). */
+export function updateLabel(state: string): string {
+  return UPDATE_STATES.includes(state) ? t(`update.${state}` as MsgKey) : '';
+}
 
 export type Tiles = {
   library_total: number; loaded_skills: number; events_total: number;
@@ -78,44 +78,62 @@ const BASE = '/api/v1';
 // spinner on each visit — the most-repeated interaction in the app paying the
 // highest cost (Nielsen #1/#7; see docs/UX-AUDIT-20260901.md). With the cache,
 // a revisited tab renders instantly from the last response while a background
-// refetch keeps it current. Bonus: 总览 and 拓扑 both read /skills (~640 KB) —
-// now it downloads once, not once per tab visit.
+// refetch keeps it current. Bonus: the overview and the topology both read
+// /skills (~640 KB) — now it downloads once, not once per tab visit.
 const cache = new Map<string, unknown>();
 const inflight = new Map<string, Promise<unknown>>();
 
+/** Some responses carry prose the server localises (health section titles, the
+ * governance report), so the language is part of the request — and therefore
+ * part of the cache key, or a switch would serve the old language from cache. */
+function url(path: string): string {
+  return BASE + path + (path.includes('?') ? '&' : '?') + 'lang=' + getLang();
+}
+
 export async function api<T>(path: string, opts?: { fresh?: boolean }): Promise<T> {
+  const u = url(path);
   if (!opts?.fresh) {
-    if (cache.has(path)) return cache.get(path) as T;
-    const running = inflight.get(path);
+    if (cache.has(u)) return cache.get(u) as T;
+    const running = inflight.get(u);
     if (running) return running as Promise<T>;
   }
-  const p = fetch(BASE + path)
+  const p = fetch(u)
     .then((res) => {
       if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
       return res.json() as Promise<T>;
     })
-    .then((d) => { cache.set(path, d); inflight.delete(path); return d; })
-    .catch((e) => { inflight.delete(path); throw e; });
-  inflight.set(path, p);
+    .then((d) => { cache.set(u, d); inflight.delete(u); return d; })
+    .catch((e) => { inflight.delete(u); throw e; });
+  inflight.set(u, p);
   return p;
 }
 
 /** Cached GET as a hook: instant data on revisit, background revalidate,
  * spinner only on the true first load. `reload()` bypasses the cache — use it
- * after an action that changes server state (e.g. 一键更新). */
+ * after an action that changes server state (e.g. the one-click update). */
 export function useApi<T>(path: string) {
-  const [data, setData] = useState<T | null>(() => (cache.get(path) as T) ?? null);
+  const lang = useLang();
+  const [data, setData] = useState<T | null>(() => (cache.get(url(path)) as T) ?? null);
   const [error, setError] = useState('');
+  const lastPath = useRef(path);
   useEffect(() => {
     let on = true;
-    const had = cache.has(path);
-    setData(had ? (cache.get(path) as T) : null);
+    const u = url(path);
+    const had = cache.has(u);
+    const samePath = lastPath.current === path;
+    lastPath.current = path;
+    // A language switch changes the URL but not the data behind it — same rows,
+    // same numbers, different wording. Blanking the page to a spinner while the
+    // other language loads would undo exactly what the cache above is for
+    // (the health page takes seconds to rebuild), so the current view stays up
+    // and is replaced when the translated response lands.
+    setData((prev) => (had ? (cache.get(u) as T) : (samePath ? prev : null)));
     setError('');
     api<T>(path, { fresh: had })
       .then((d) => { if (on) setData(d); })
       .catch((e) => { if (on) setError(String(e)); });
     return () => { on = false; };
-  }, [path]);
+  }, [path, lang]);
   const reload = useCallback(
     () => api<T>(path, { fresh: true }).then(setData).catch((e) => setError(String(e))),
     [path],
@@ -185,22 +203,20 @@ export function isSharedDir(agent: string): boolean {
   return agent.startsWith('shared:');
 }
 
-export const SOURCE_LABEL: Record<string, string> = {
-  organized: '第三方库',
-  'self-made': '自制库',
-  installer: '安装器',
-  unmanaged: '未纳管',
-  unresolved: '外部/插件',
-};
+const SOURCES = ['organized', 'self-made', 'installer', 'unmanaged', 'unresolved'];
+
+export function sourceLabel(source: string): string {
+  return SOURCES.includes(source) ? t(`source.${source}` as MsgKey) : source;
+}
 
 export function fmtRel(ts: string | null | undefined): string {
   if (!ts) return '—';
-  const t = new Date(ts).getTime();
-  if (Number.isNaN(t)) return ts;
-  const d = Date.now() - t;
+  const at = new Date(ts).getTime();
+  if (Number.isNaN(at)) return ts;
+  const d = Date.now() - at;
   const day = 86400000;
-  if (d < 3600000) return `${Math.max(1, Math.round(d / 60000))} 分钟前`;
-  if (d < day) return `${Math.round(d / 3600000)} 小时前`;
-  if (d < day * 30) return `${Math.round(d / day)} 天前`;
+  if (d < 3600000) return t('rel.minutes', { n: Math.max(1, Math.round(d / 60000)) });
+  if (d < day) return t('rel.hours', { n: Math.round(d / 3600000) });
+  if (d < day * 30) return t('rel.days', { n: Math.round(d / day) });
   return ts.slice(0, 10);
 }

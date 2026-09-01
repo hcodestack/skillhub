@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Button } from '@heroui/react';
+import { t, useT } from './i18n';
 
 /** Long absolute paths are the densest thing on this page and the hardest to
  * scan. Two substitutions carry most of the readability: a user's home becomes
- * `~`, and the skills library becomes `库`, so what remains is the part that
- * actually differs between entries. */
+ * `~`, and the skills library root becomes a single word, so what remains is
+ * the part that actually differs between entries. */
 export function prettyPath(p: string, libraryRoot = ''): string {
   if (!p) return '';
   let out = p;
   if (libraryRoot && out.startsWith(libraryRoot)) {
-    out = '库' + out.slice(libraryRoot.length);
+    out = t('path.library') + out.slice(libraryRoot.length);
   }
   out = out.replace(/^\/Users\/[^/]+/, '~').replace(/^\/home\/[^/]+/, '~');
   return out;
@@ -31,10 +32,11 @@ export function PathText({ path, libraryRoot, className = '' }: {
   );
 }
 
-export function CopyButton({ text, label = '复制', size = 'sm' }: {
+export function CopyButton({ text, label, size = 'sm' }: {
   text: string; label?: string; size?: 'sm' | 'md';
 }) {
   const [done, setDone] = useState(false);
+  const tr = useT();
   if (!text) return null;
   return (
     <Button
@@ -47,7 +49,7 @@ export function CopyButton({ text, label = '复制', size = 'sm' }: {
         });
       }}
     >
-      {done ? '已复制' : label}
+      {done ? tr('common.copied') : (label ?? tr('common.copy'))}
     </Button>
   );
 }

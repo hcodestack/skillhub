@@ -68,7 +68,9 @@ and tell them the catalog page fills in once a real library exists.
 
 Flags you may add after asking the user:
 `--port <n>` (default 8787) · `--autostart 1` (macOS start-at-login) ·
-`--lang zh` (wizard/log language).
+`--lang zh` (wizard/log language — the dashboard itself opens in English and
+has its own `EN | 中文` switch in the header, so this flag is only about the
+installer's output).
 
 `--connect-mcp auto` registers the hub as an MCP tool in Claude Code when the
 `claude` CLI is present — that MCP server is how **you** will query Skillhub

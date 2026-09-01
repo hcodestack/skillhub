@@ -48,6 +48,7 @@ hand anymore:
 | 📋 **Findings → action** | Export a governance report (paste it to your agent as a work order) or a reviewable remediation script whose *uncommented* commands are provably safe |
 | 🤖 **MCP native** | Seven read-only tools let Claude Code / Codex query the hub directly: *"which skills does nobody use?" "is X safe?" "fetch the remediation plan"* — your agent executes, with your confirmation, on the machine where the files are |
 | 🖥 **Runs anywhere** | One machine (built-in self-reporter, zero cron), Docker, or a LAN hub on a home server/NAS aggregating every machine you work on |
+| 🌍 **English and 中文** | The UI ships in English and switches to Simplified Chinese from the header — including the text the server composes (health findings, the exported governance report). One catalog per side, two strings per message, so translations cannot drift |
 | 🔒 **Read-only by design** | Skillhub observes; your existing workflow keeps managing. It can never fight your tooling or move your files |
 
 <div align="center">
@@ -183,7 +184,36 @@ Everything is environment variables; only the first is required.
 
 > **Note** · The dashboard has no authentication — it binds to `127.0.0.1` by
 > default. Set `SKILLHUB_HOST=0.0.0.0` only on a network you trust.
-> The dashboard UI is currently Chinese-first; i18n contributions are welcome.
+
+## 🌍 Language
+
+The dashboard is **English by default** and switches to Simplified Chinese from
+`EN | 中文` in the header. The choice is remembered per browser
+(`localStorage['skillhub-lang']`), and `?lang=zh` / `?lang=en` sets it from a
+link — handy for sharing one view with a colleague who reads the other language.
+
+The switch covers the text the *server* composes too — health-finding titles and
+hints, background-job names, safety-rule rationales, and the exported governance
+report and remediation script — because every request carries the current
+language and the language is part of the client-side cache key.
+
+**Adding or changing wording** (and adding a third language) happens in two
+catalogs, one per side:
+
+| | |
+|---|---|
+| `web/src/lib/i18n.tsx` | everything rendered in the browser. Each entry is one message with both strings side by side: `'nav.health': ['Health', '健康']`. Components read it with `const t = useT()`; keys are typed, so a typo fails `pnpm typecheck` |
+| `server/skillhub_server/core/i18n.py` | text the API composes. Same shape: `"he.jobs.title": ("Background jobs", "后台任务")`, resolved per request from `?lang=` |
+
+Keeping both strings in one entry is deliberate: a translation sits on the line
+below the text it translates, so it cannot silently fall behind an edit.
+
+What lands in the database is a **key, never display text** — domain tags
+(`video`, `cn-social`, …) and the synthetic `standalone` / `unmanaged` /
+`external` families are rendered per language in the browser, and a safety
+finding's category and rationale are resolved from its rule id at read time, so
+rewording a rule or switching language needs no rescan. Your own directory names
+(`Cloudflare`, `my-stuff`, …) are always shown verbatim.
 
 ## 🛡 Why the safety review exists
 

@@ -24,46 +24,46 @@ import re
 #            example in reference docs describes someone else's API, not what
 #            this skill does, and matching it only produces noise.
 RULES: list[tuple[str, str, str, str, str, str, str]] = [
-    ("AGENT_MEMORY", "凭据与隐私", "high",
-     "读取 agent 的记忆/身份文件（MEMORY.md、CLAUDE.md、settings 等）——这些含个人上下文与配置",
+    ("AGENT_MEMORY", "vet.cat.credentials", "high",
+     "vet.rule.AGENT_MEMORY",
      r"MEMORY\.md|USER\.md|SOUL\.md|IDENTITY\.md|\.claude/memory|\.claude/settings"
      r"|\.codex/auth|auth\.json",
      r"skillhub|本项目|reference/", "any"),
-    ("CREDENTIAL_PROMPT", "凭据与隐私", "high",
-     "向用户索取密码/令牌/密钥",
+    ("CREDENTIAL_PROMPT", "vet.cat.credentials", "high",
+     "vet.rule.CREDENTIAL_PROMPT",
      r"(?<![A-Za-z0-9_])input\s*\(.*(?:password|token|secret|credential)"
      r"|getpass\.getpass"
      r"|prompt[^\n]{0,40}\b(?:enter|provide|paste)\b[^\n]{0,40}"
      r"(?:api[ _-]?key|token|password|secret)",
      r"", "any"),
-    ("SECRET_PATHS", "凭据与隐私", "high",
-     "访问 ~/.ssh、~/.aws、~/.config 等凭据目录",
+    ("SECRET_PATHS", "vet.cat.credentials", "high",
+     "vet.rule.SECRET_PATHS",
      r"~/\.ssh|~/\.aws|\$HOME/\.ssh|\$HOME/\.aws|\.aws/credentials|id_rsa|id_ed25519",
      r"", "any"),
-    ("BROWSER_SESSION", "凭据与隐私", "high",
-     "读取浏览器 cookie / 会话（可窃取已登录身份）",
+    ("BROWSER_SESSION", "vet.cat.credentials", "high",
+     "vet.rule.BROWSER_SESSION",
      r"cookies\.sqlite|\.mozilla/firefox|Chrome/(?:Default|Profile)"
      r"|browser.{0,12}cookie",
      r"cookie banner|cookie 弹窗|同意.{0,4}cookie", "any"),
-    ("IP_ENDPOINT", "外发与下载", "high",
-     "直连 IP 而非域名（绕过 DNS，常见于外带数据）",
+    ("IP_ENDPOINT", "vet.cat.exfiltration", "high",
+     "vet.rule.IP_ENDPOINT",
      r"https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",
      r"127\.0\.0\.1|0\.0\.0\.0|192\.168\.|10\.\d|172\.(?:1[6-9]|2\d|3[01])\.", "any"),
-    ("REMOTE_EXEC", "执行与提权", "high",
-     "下载后直接执行（curl | sh 之类，内容不可审计）",
+    ("REMOTE_EXEC", "vet.cat.execution", "high",
+     "vet.rule.REMOTE_EXEC",
      r"curl[^\n|]{0,120}\|\s*(?:ba)?sh|wget[^\n|]{0,120}\|\s*(?:ba)?sh"
      r"|curl[^\n]{0,120}\|\s*python",
      r"", "any"),
-    ("EVAL_EXEC", "执行与提权", "medium",
-     "对外部输入使用 eval/exec",
+    ("EVAL_EXEC", "vet.cat.execution", "medium",
+     "vet.rule.EVAL_EXEC",
      r"(?<![.\w])eval\s*\(|(?<![.\w])exec\s*\(|new Function\s*\(",
      r"eval\s*\(\s*['\"]", "code"),
-    ("SUDO", "执行与提权", "medium",
-     "请求 sudo / 提权",
+    ("SUDO", "vet.cat.execution", "medium",
+     "vet.rule.SUDO",
      r"\bsudo\s+\w|osascript .{0,40}administrator privileges",
      r"", "any"),
-    ("SYSTEM_WRITE", "执行与提权", "medium",
-     "写入工作区之外的系统路径（/etc、/usr、/var、/opt）",
+    ("SYSTEM_WRITE", "vet.cat.execution", "medium",
+     "vet.rule.SYSTEM_WRITE",
      r"(?:>|>>|tee|write|open)\s*\(?\s*['\"]?/(?:etc|usr|var|opt)/",
      r"", "code"),
     # exclusions here all assert the destination is *not* external. `${...}`
@@ -73,20 +73,23 @@ RULES: list[tuple[str, str, str, str, str, str, str]] = [
     # They mark the destination unknown, and unknown is not evidence of safety.
     # Dropping them surfaced only real findings in testing (e.g. an analytics
     # POST built with template-literal URLs that the exclusion had hidden).
-    ("DATA_POST", "外发与下载", "medium",
-     "向外部地址 POST 数据",
+    ("DATA_POST", "vet.cat.exfiltration", "medium",
+     "vet.rule.DATA_POST",
      r"curl[^\n]{0,80}(?:--data|-d\s)|wget[^\n]{0,80}--post-data"
      r"|requests\.post\(|fetch\([^\n]{0,60}method:\s*['\"]POST",
      r"localhost|127\.0\.0\.1|api\.github\.com", "code"),
-    ("UNPINNED_INSTALL", "外发与下载", "low",
-     "安装未固定版本的依赖（供应链风险）",
+    ("UNPINNED_INSTALL", "vet.cat.exfiltration", "low",
+     "vet.rule.UNPINNED_INSTALL",
      r"pip3?\s+install\s+(?!-r\s|-e\s)[a-zA-Z]|npm\s+install\s+-g\s|gem\s+install\s+",
      r"requirements\.txt|package\.json", "any"),
-    ("OBFUSCATED", "执行与提权", "medium",
-     "base64 解码后使用（常用于隐藏真实行为）",
+    ("OBFUSCATED", "vet.cat.execution", "medium",
+     "vet.rule.OBFUSCATED",
      r"base64\s+(?:-d|--decode)|b64decode|atob\s*\(",
      r"encode|-w\s*0|base64 编码", "code"),
 ]
+
+# rule id -> category message key, for callers that localise a cached finding
+RULE_CATEGORY: dict[str, str] = {r[0]: r[1] for r in RULES}
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 

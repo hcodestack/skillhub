@@ -12,19 +12,21 @@ import time
 from contextlib import contextmanager
 
 from .db import get_conn, tx
+from .i18n import tr
 
-# order is the order they are shown in
+# order is the order they are shown in; the value is a message key, resolved
+# per request so the health page and the exported report follow the language
 JOBS: dict[str, str] = {
-    "library_sync": "库索引同步",
-    "upstream_check": "上游更新检查",
-    "vetting_scan": "安全审查扫描",
+    "library_sync": "job.library_sync",
+    "upstream_check": "job.upstream_check",
+    "vetting_scan": "job.vetting_scan",
 }
 
 # the built-in self-reporter joins the board only when it is actually enabled,
 # so container deployments don't show a permanently-"never" row
 from .config import settings as _settings
 if _settings.self_report_enabled():
-    JOBS["self_report"] = "本机自动上报"
+    JOBS["self_report"] = "job.self_report"
 
 STUCK_AFTER = 30 * 60   # a run still unfinished after this long is not merely slow
 
@@ -67,12 +69,13 @@ def record(job: str):
            run.detail, "" if run.ok else run.detail)
 
 
-def last_runs() -> list[dict]:
+def last_runs(lang: str = "en") -> list[dict]:
     """One row per known job, including jobs that have never run."""
     rows = {r["job"]: r for r in get_conn().execute("SELECT * FROM job_runs")}
     now = int(time.time())
     out = []
-    for job, label in JOBS.items():
+    for job, key in JOBS.items():
+        label = tr(lang, key)
         r = rows.get(job)
         if r is None:
             out.append({"job": job, "label": label, "status": "never",

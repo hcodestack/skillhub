@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from ..core.config import settings
 from ..core.provenance import lookup as provenance_lookup
 from ..core.db import get_conn, tx
+from ..core.i18n import tr
 from ..core.jobs import record
 
 router = APIRouter(prefix="/sources", tags=["sources"])
@@ -149,8 +150,8 @@ def refresh(force: bool = False, network: bool = True) -> dict:
         return _refresh(force, network)
     with record("upstream_check") as run:
         res = _refresh(force, network)
-        run.detail = (f"{res['traced']} 溯源 / {res['checked']} 联网核对 / "
-                      f"{res['cached']} 用缓存")
+        run.detail = tr("en", "job.detail.upstream", traced=res["traced"],
+                        checked=res["checked"], cached=res["cached"])
         return res
 
 
@@ -226,7 +227,8 @@ def _update_cmd(row) -> str:
     """A command the user can actually paste — rewritten from the hub's mount
     point to the library path as they see it."""
     if row["kind"] == "installer":
-        return "lark-cli update"
+        # the installer owns updating; the hub has no way to know its command
+        return ""
     if row["kind"] != "git" or state_of(row) != "behind":
         return ""
     path = row["path"] or ""
@@ -268,7 +270,7 @@ class UpdateReq(BaseModel):
 
 
 @router.post("/update")
-def update(req: UpdateReq):
+def update(req: UpdateReq, lang: str = "en"):
     """Fast-forward one git-backed skill to its upstream.
 
     Deliberately narrow: git checkouts only, --ff-only (never a merge commit),
@@ -280,23 +282,25 @@ def update(req: UpdateReq):
     row = conn.execute("SELECT * FROM skill_sources WHERE skill_id=?",
                        (req.skill_id,)).fetchone()
     if not row:
-        return {"ok": False, "error": "该技能没有可追溯的上游来源"}
+        return {"ok": False, "error": tr(lang, "src.noOrigin")}
     if row["kind"] != "git":
-        return {"ok": False, "error": f"{row['kind']} 类技能由其安装器更新，hub 不代劳"}
+        return {"ok": False,
+                "error": tr(lang, "src.installerOwned", kind=row["kind"])}
 
     path = os.path.realpath(row["path"])
     lib = os.path.realpath(settings.library_root_path)
     if not path.startswith(lib + os.sep):
-        return {"ok": False, "error": "目标路径不在技能库内，已拒绝"}
+        return {"ok": False, "error": tr(lang, "src.outsideLibrary")}
     if not os.path.isdir(os.path.join(path, ".git")):
-        return {"ok": False, "error": "目标已不是 git 仓库"}
+        return {"ok": False, "error": tr(lang, "src.notGit")}
 
     st = _git(["status", "--porcelain"], cwd=path, timeout=60)
     if st.returncode != 0:
-        return {"ok": False, "error": f"git status 失败：{st.stderr.strip()[:200]}"}
+        return {"ok": False,
+                "error": tr(lang, "src.statusFailed", err=st.stderr.strip()[:200])}
     if st.stdout.strip():
         n = len(st.stdout.strip().splitlines())
-        return {"ok": False, "error": f"工作区有 {n} 处未提交改动，拒绝更新（避免覆盖你的修改）"}
+        return {"ok": False, "error": tr(lang, "src.dirtyTree", n=n)}
 
     before = _read_head(Path(path) / ".git")
     pull = _git(["pull", "--ff-only"], cwd=path)
@@ -313,8 +317,7 @@ def update(req: UpdateReq):
     return {"ok": True, "skill_id": req.skill_id,
             "from": before[:12], "to": after[:12],
             "changed": before != after,
-            "note": ("技能内容已变，建议在有库访问权的机器上跑 `skill index` "
-                     "刷新目录（名称/描述可能已更新）") if before != after else "",
+            "note": tr(lang, "src.reindexNote") if before != after else "",
             "output": pull.stdout.strip()[-500:]}
 
 

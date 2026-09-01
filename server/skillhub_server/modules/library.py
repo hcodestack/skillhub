@@ -16,45 +16,55 @@ from fastapi import APIRouter
 
 from ..core.config import settings
 from ..core.db import get_conn, tx
+from ..core.i18n import tr
 from ..core.jobs import record
 from ..core.quality import BLOCK_SCALAR_ARTIFACTS, body_lines, read_description
 
 router = APIRouter(prefix="/library", tags=["library"])
 
-# Domain tagging rules: (tag, keyword regex on id+name+description).
+# Domain tagging rules: (tag key, keyword regex on id+name+description).
+#
+# The tag is a stable key, not display text — it is stored in the DB and the
+# browser renders it in the reader's language (web/src/lib/i18n.tsx, `cat.*`).
+# The patterns stay bilingual: they match what skills actually say about
+# themselves, and plenty of them say it in Chinese.
 DOMAIN_RULES = [
     # Order matters: the first match becomes the primary tag, so a specific
     # domain must be tested before a broader one. Tokens are kept narrow —
     # a generic word like "render" once put "render Mermaid diagrams" under
     # video, which is how a tag stops meaning anything.
-    ("Meta/技能构建", r"skill[- ]creator|skill.library|skill.hub|"
-                     r"skill building|skill\.md|创建技能|技能库|技能编写"),
-    ("办公协同", r"\blark\b|飞书|feishu|\bemail\b|gmail|notion|airtable|calendar|"
-                r"邮件|日历|审批|考勤"),
-    ("音频/语音", r"\btts\b|text[- ]to[- ]speech|speech[- ]to[- ]text|voice|"
-                r"audio|sound effect|\bmusic\b|语音|配音|音频|音效|音乐"),
-    ("视频/动效", r"\bvideo\b|animation|anime\.?js|remotion|\bgsap\b|"
-                r"motion|keyframe|视频|动画|动效|关键帧|短剧|分镜"),
-    ("3D/角色", r"\brig\b|rigging|character|avatar|\b3d\b|three\.?js|webgl|shader|blender|骨骼|角色|绑定"),
-    ("图像", r"\bimage\b|illustration|poster|cover|\bsvg\b|figure|comfyui|图像|图片|封面|插画|海报"),
-    ("设计/UI", r"design system|\bui\b|\bux\b|figma|tailwind|界面设计|视觉规范|设计系统"),
-    ("文档产出", r"docx|xlsx|pptx|\bpdf\b|word document|excel|powerpoint|spreadsheet|"
-                r"文档|表格|幻灯片|演示文稿"),
-    ("中文社媒", r"小红书|xiaohongshu|抖音|douyin|微信|wechat|公众号|gzh|bilibili|b站|"
-                r"快手|kuaishou|微博|weibo|视频号"),
-    ("SEO/营销", r"\bseo\b|marketing|growth|copywriting|advertis|营销|投放|获客|文案"),
-    ("写作", r"writer|writing|humanizer|\barticle\b|blog post|写作|润色|改写"),
-    ("联网/抓取", r"web[- ]?access|browser|scrape|crawl|search the web|tavily|firecrawl|"
-                r"联网|抓取|爬虫"),
-    ("数据/分析", r"\bsql\b|analytics|dashboard|chart|data analysis|visuali[sz]ation|"
-                r"数据分析|报表|统计"),
-    ("开发/云", r"cloudflare|workers|wrangler|deploy|\bsdk\b|\bcli\b|\bapi\b|devops|"
-                r"turnstile|durable object|部署|运维"),
+    ("meta", r"skill[- ]creator|skill.library|skill.hub|"
+             r"skill building|skill\.md|创建技能|技能库|技能编写"),
+    ("office", r"\blark\b|飞书|feishu|\bemail\b|gmail|notion|airtable|calendar|"
+               r"邮件|日历|审批|考勤"),
+    ("audio", r"\btts\b|text[- ]to[- ]speech|speech[- ]to[- ]text|voice|"
+              r"audio|sound effect|\bmusic\b|语音|配音|音频|音效|音乐"),
+    ("video", r"\bvideo\b|animation|anime\.?js|remotion|\bgsap\b|"
+              r"motion|keyframe|视频|动画|动效|关键帧|短剧|分镜"),
+    ("3d", r"\brig\b|rigging|character|avatar|\b3d\b|three\.?js|webgl|shader|blender|骨骼|角色|绑定"),
+    ("image", r"\bimage\b|illustration|poster|cover|\bsvg\b|figure|comfyui|图像|图片|封面|插画|海报"),
+    ("design", r"design system|\bui\b|\bux\b|figma|tailwind|界面设计|视觉规范|设计系统"),
+    ("docs", r"docx|xlsx|pptx|\bpdf\b|word document|excel|powerpoint|spreadsheet|"
+             r"文档|表格|幻灯片|演示文稿"),
+    ("cn-social", r"小红书|xiaohongshu|抖音|douyin|微信|wechat|公众号|gzh|bilibili|b站|"
+                  r"快手|kuaishou|微博|weibo|视频号"),
+    ("seo", r"\bseo\b|marketing|growth|copywriting|advertis|营销|投放|获客|文案"),
+    ("writing", r"writer|writing|humanizer|\barticle\b|blog post|写作|润色|改写"),
+    ("web", r"web[- ]?access|browser|scrape|crawl|search the web|tavily|firecrawl|"
+            r"联网|抓取|爬虫"),
+    ("data", r"\bsql\b|analytics|dashboard|chart|data analysis|visuali[sz]ation|"
+             r"数据分析|报表|统计"),
+    ("dev", r"cloudflare|workers|wrangler|deploy|\bsdk\b|\bcli\b|\bapi\b|devops|"
+            r"turnstile|durable object|部署|运维"),
 ]
+
+# a skill id with no vendor prefix belongs to no family; "standalone" is a key
+# the UI translates, like the domain tags above
+STANDALONE = "standalone"
 
 
 def classify(sid: str, name: str, desc: str) -> tuple[str, list[str]]:
-    vendor = sid.split("/")[0] if "/" in sid else "独立"
+    vendor = sid.split("/")[0] if "/" in sid else STANDALONE
     text = f"{sid} {name} {desc}".lower()
     tags = [tag for tag, pat in DOMAIN_RULES if re.search(pat, text)][:3]
     return vendor, tags
@@ -129,7 +139,7 @@ def sync_library() -> dict:
     with record("library_sync") as run:
         res = _sync_library()
         if res.get("ok"):
-            run.detail = f"{res['count']} 个技能入库"
+            run.detail = tr("en", "job.detail.synced", n=res["count"])
         else:
             run.ok = False
             run.detail = res.get("error", "")
