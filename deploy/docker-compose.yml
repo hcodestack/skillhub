@@ -1,0 +1,27 @@
+# Skillhub deployment — build the image on a dev machine, ship it, run it
+# anywhere Docker runs (a NAS, a home server, the same machine):
+#   cd web && pnpm build
+#   docker build --platform linux/amd64 -f deploy/Dockerfile.release -t skillhub:<ver> .
+#   docker save skillhub:<ver> | ssh <host> docker load     # or push to a registry
+#   docker compose up -d
+# (bump the image tag here when releasing)
+services:
+  skillhub:
+    image: skillhub:latest
+    container_name: skillhub
+    ports:
+      - "8787:8787"
+    environment:
+      # TZ: "UTC"
+      # the hub sees the library at /library; commands it renders for copy-paste
+      # should show the path as YOUR machines see it:
+      SKILLHUB_LIBRARY_DISPLAY_ROOT: "/path/to/skills-library"
+    volumes:
+      - skillhub-data:/data
+      # read-write only if you want one-click `git pull --ff-only` updates for
+      # git-backed skills; everything else is read-only. Add :ro otherwise.
+      - "/path/to/skills-library:/library"
+    restart: unless-stopped
+
+volumes:
+  skillhub-data:

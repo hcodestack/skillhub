@@ -1,0 +1,9 @@
+.git
+.DS_Store
+**/node_modules
+server/.venv
+server/data
+**/__pycache__
+*.db
+*.db-shm
+*.db-wal

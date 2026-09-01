@@ -1,0 +1,24 @@
+# Release image using the locally prebuilt SPA (web/dist, arch-independent).
+# Run `pnpm build` in web/ first, then:
+#   docker build --platform linux/amd64 -f deploy/Dockerfile.release -t skillhub:<ver> .
+# (deploy/Dockerfile is the full in-container build; it needs registry access
+# and is subject to pnpm's minimum-release-age supply-chain policy.)
+FROM python:3.12-slim
+# git is used read-only: `git ls-remote` checks a skill's upstream HEAD without
+# cloning or fetching, so the library can stay mounted read-only.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY server/ server/
+RUN pip install --no-cache-dir ./server
+COPY web/dist /app/web/dist
+
+ENV SKILLHUB_HOST=0.0.0.0 \
+    SKILLHUB_PORT=8787 \
+    SKILLHUB_STATIC=/app/web/dist \
+    SKILLHUB_DB=/data/skillhub.db \
+    SKILLHUB_LIBRARY_ROOT=/library
+
+EXPOSE 8787
+VOLUME /data
+CMD ["skillhub-server"]

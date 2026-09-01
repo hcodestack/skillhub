@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/* Link-state series colors, used by the topology sankey, its legend, and the
+ * link-state explainer on the health page (scoping these to the topology page
+ * once left the health-page swatches transparent — they must be global).
+ *
+ * 软链 is green by user request (2026-09-02). Green beside the loose-entity
+ * orange is the classic deutan trap, so the pick is validator-driven, not
+ * eyeballed (a CVD-simulation palette validator, run on the effective
+ * post-alpha colors):
+ *  - light: base #1baf7a @ .40 wash × ribbon .72 → #bde8d9 on white;
+ *    all green pairs pass CVD (worst overall 11.5 deutan, and that pair is
+ *    the pre-existing orange↔red, not green).
+ *  - dark: the wash trick fails — dimming green lands it on the dark red's
+ *    lightness and protan ΔE collapses to ~2. So dark uses an OPAQUE bright
+ *    emerald #38e1b9; the ribbons' own 0.72 opacity lands it at #2fa98c,
+ *    where green↔orange is ΔE 9.6 deutan / 12.2 tritan — clean pass.
+ *  - the one sub-floor pair either mode is orange↔red (12.8/12.4 normal),
+ *    which predates this change and ships with legend + hover tooltip +
+ *    table view as relief. */
+:root {
+  --sh-link-ok: rgb(27 175 122 / 0.40);
+  --sh-link-vendored: #2a78d6;
+  --sh-link-unrooted: #8a8a90;
+}
+:root[data-theme="dark"], :root.dark {
+  --sh-link-ok: #38e1b9;
+  --sh-link-vendored: #3987e5;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not(.light) {
+    --sh-link-ok: #38e1b9;
+    --sh-link-vendored: #3987e5;
+  }
+}
