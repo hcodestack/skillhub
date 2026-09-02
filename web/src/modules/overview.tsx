@@ -8,7 +8,16 @@ import {
 import { AgentChips } from '../components/AgentChips';
 import { prettyPath } from '../lib/paths';
 import { SkillDrawer } from '../components/SkillDrawer';
+import { SkillCard } from '../components/SkillCard';
+import { Segmented } from '../components/Segmented';
+import { TagFilter, UNTAGGED } from '../components/TagFilter';
 import { categoryLabel, useT, vendorLabel } from '../lib/i18n';
+
+type View = 'list' | 'cards';
+const VIEW_KEY = 'skillhub-overview-view';
+function savedView(): View {
+  try { return localStorage.getItem(VIEW_KEY) === 'cards' ? 'cards' : 'list'; } catch { return 'list'; }
+}
 
 type SortDesc = { column: string | number; direction: 'ascending' | 'descending' };
 
@@ -81,6 +90,12 @@ export default function Overview() {
   const [agent, setAgent] = useState('all');
   const [category, setCategory] = useState('all');
   const [loadedOnly, setLoadedOnly] = useState('all');
+  const [tags, setTags] = useState<Set<string>>(() => new Set());
+  const [view, setViewState] = useState<View>(savedView);
+  const setView = (v: View) => {
+    setViewState(v);
+    try { localStorage.setItem(VIEW_KEY, v); } catch { /* per-viewer nicety only */ }
+  };
   const [sort, setSort] = useState<SortDesc>({ column: 'total', direction: 'descending' });
   const [sel, setSel] = useState<SkillItem | null>(null);
 
@@ -99,10 +114,25 @@ export default function Overview() {
     return [...set.entries()].sort((a, b) => b[1] - a[1]);
   }, [items]);
 
+  const tagCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    let untagged = 0;
+    for (const it of items) {
+      if (!it.tags.length) untagged += 1;
+      for (const tag of it.tags) m.set(tag, (m.get(tag) ?? 0) + 1);
+    }
+    return { m, untagged };
+  }, [items]);
+
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return items.filter((it) => {
       if (source !== 'all' && it.source !== source) return false;
+      // tags are match-any: a skill passes if it carries any selected tag, or
+      // has none at all when "untagged" is among the selection
+      if (tags.size > 0
+          && !it.tags.some((tag) => tags.has(tag))
+          && !(tags.has(UNTAGGED) && it.tags.length === 0)) return false;
       if (agent !== 'all' && !it.agents.includes(agent)) return false;
       if (category !== 'all' && (it.category || 'uncategorized') !== category) return false;
       if (loadedOnly === 'loaded' && it.installs.length === 0) return false;
@@ -116,7 +146,7 @@ export default function Overview() {
       }
       return true;
     });
-  }, [items, q, source, agent, category, loadedOnly]);
+  }, [items, q, source, agent, category, loadedOnly, tags]);
 
   const sorted = useMemo(() => {
     const dir = sort.direction === 'ascending' ? 1 : -1;
@@ -205,11 +235,33 @@ export default function Overview() {
           { id: 'behind', label: t('ov.filter.state.behind') },
           { id: 'risky', label: t('ov.filter.state.risky') },
         ]} />
-        <span className="ml-auto text-sm text-foreground/60">
-          {t('ov.results', { n: sorted.length })}
+        <TagFilter counts={tagCounts.m} untagged={tagCounts.untagged}
+                   selected={tags} onChange={setTags} />
+        <span className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-foreground/60">{t('ov.results', { n: sorted.length })}</span>
+          <Segmented<View>
+            label={t('ov.view')}
+            value={view}
+            onChange={setView}
+            options={[
+              { id: 'list', label: t('ov.view.list') },
+              { id: 'cards', label: t('ov.view.cards') },
+            ]}
+          />
         </span>
       </div>
 
+      {view === 'cards' ? (
+        sorted.length === 0 ? (
+          <div className="p-10 text-center text-foreground/60">{t('ov.empty')}</div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {sorted.map((it) => (
+              <SkillCard key={it.key} item={it} onOpen={() => setSel(it)} />
+            ))}
+          </div>
+        )
+      ) : (
       <Table className="w-full">
         <Table.ScrollContainer>
           <Table.Content
@@ -337,6 +389,7 @@ export default function Overview() {
           </Table.Content>
         </Table.ScrollContainer>
       </Table>
+      )}
 
       <SkillDrawer item={sel} libraryRoot={tiles?.library_root ?? ''}
                    onClose={() => setSel(null)} />

@@ -2,6 +2,7 @@
 per-machine reporters. Idempotent: events carry a content hash; inventory is a
 full per-agent snapshot that upserts and deactivates missing rows."""
 import hashlib
+import json
 import time
 
 from fastapi import APIRouter
@@ -60,10 +61,17 @@ def report(r: Report):
     lib_root = settings.library_root_path
     ins = upd = ev = 0
     with tx():
+        # snapshot_agents is the reporter's list of tools it actually scanned —
+        # i.e. whose home directory exists — including ones holding no skill.
+        # That is the "detected" set the hosts page shows; without it a tool
+        # with zero entries is indistinguishable from one not installed.
         conn.execute(
-            "INSERT INTO hosts(id,os,last_report_at) VALUES(?,?,?) "
-            "ON CONFLICT(id) DO UPDATE SET os=excluded.os, last_report_at=excluded.last_report_at",
-            (r.host, r.os, now))
+            "INSERT INTO hosts(id,os,last_report_at,agents_seen) VALUES(?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET os=excluded.os, "
+            "last_report_at=excluded.last_report_at, "
+            "agents_seen=CASE WHEN excluded.agents_seen='[]' THEN hosts.agents_seen "
+            "ELSE excluded.agents_seen END",
+            (r.host, r.os, now, json.dumps(sorted(r.snapshot_agents))))
 
         for it in r.inventory:
             sid = R.target_to_id(it.target_path, lib_root, exact)

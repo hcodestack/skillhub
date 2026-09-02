@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS skills(
 CREATE TABLE IF NOT EXISTS hosts(
   id             TEXT PRIMARY KEY,     -- hostname
   os             TEXT DEFAULT '',
-  last_report_at TEXT DEFAULT ''
+  last_report_at TEXT DEFAULT '',
+  agents_seen    TEXT DEFAULT '[]'     -- JSON: tools the reporter detected, entries or not
 );
 
 -- Where a skill is loaded: one row per (host, agent, scope, project, entry name).
@@ -122,6 +123,7 @@ MIGRATIONS = [
     ("skill_sources", "baseline_ref", "TEXT DEFAULT ''"),
     ("skills", "body_lines", "INTEGER DEFAULT 0"),
     ("installs", "vcs", "TEXT DEFAULT ''"),
+    ("hosts", "agents_seen", "TEXT DEFAULT '[]'"),
 ]
 
 

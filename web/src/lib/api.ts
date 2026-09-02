@@ -65,9 +65,17 @@ export type HealthSection = {
   hint: string; count: number; items: Record<string, unknown>[];
 };
 
+export type HostAgent = {
+  agent: string; entries: number; global_entries: number; project_entries: number;
+  global_dir: string;        // the directory this tool reads its global skills from
+  project_dirs: string[];    // projects it is loaded into
+  shared_with: string;       // for shared:* keys — which tools read this directory
+};
+
 export type HostRow = {
   id: string; os: string; last_report_at: string;
-  agents: { agent: string; entries: number; global_entries: number; project_entries: number }[];
+  agents: HostAgent[];
+  detected_agents: string[]; // tools whose home dir exists, entries or not
   events_total: number; last_event_ts: string | null;
 };
 
