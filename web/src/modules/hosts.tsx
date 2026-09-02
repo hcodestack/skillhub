@@ -1,6 +1,7 @@
 import { Card, Spinner } from '@heroui/react';
-import { fmtRel, useApi, AGENT_LABEL, type HostRow } from '../lib/api';
+import { agentLabel, fmtRel, useApi, type HostRow } from '../lib/api';
 import { useT } from '../lib/i18n';
+import { ToolIcon } from '../components/ToolIcon';
 
 export default function Hosts() {
   const t = useT();
@@ -27,7 +28,10 @@ export default function Hosts() {
             <div className="flex flex-col gap-1.5 text-sm">
               {h.agents.map((a) => (
                 <div key={a.agent} className="flex items-baseline justify-between">
-                  <span>{AGENT_LABEL[a.agent] ?? a.agent}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <ToolIcon agent={a.agent} size={16} />
+                    {agentLabel(a.agent)}
+                  </span>
                   <span className="tabular-nums text-foreground/60">
                     {t('ho.entries', {
                       n: a.entries, g: a.global_entries, p: a.project_entries,

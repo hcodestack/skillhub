@@ -85,7 +85,12 @@ def build_plan(lang: str = "en") -> dict:
             # in the script and prose here
             "suggestion": (tr(lang, "rep.loose.haveLib", id=r["skill_id"]) if lib
                            else tr(lang, "rep.loose.noLib")),
-            "replace_cmd": (f'rm -rf {shlex.quote(r["entry_path"])} && '
+            # the copy is moved into a dated trash directory, never removed:
+            # a stray copy may hold the only version of someone's local edit,
+            # and a `mv` is the difference between "undo" and "gone". (Idea
+            # from mcncarl/skills-hub's Trash-only deletion.)
+            "replace_cmd": (f'mkdir -p "$TRASH" && mv {shlex.quote(r["entry_path"])} '
+                            f'"$TRASH"/{shlex.quote(r["agent"] + "__" + r["entry_name"])} && '
                             f'ln -s {shlex.quote(lib)} {shlex.quote(r["entry_path"])}'
                             if lib else ""),
         })
@@ -208,6 +213,7 @@ def remediation_sh(lang: str = "en") -> str:
     w(_("sh.explain3"))
     w("set -u")
     w('removed=0; skipped=0')
+    w('TRASH="${SKILLHUB_TRASH:-$HOME/.local/state/skillhub/trash-$(date +%Y%m%d)}"')
     w("")
     w(_("sh.part1", n=p["totals"]["broken"]))
     for b in p["broken"]:
@@ -230,6 +236,7 @@ def remediation_sh(lang: str = "en") -> str:
     replace = [e for e in p["loose"] if e["replace_cmd"]]
     if replace:
         w(_("sh.part3"))
+        w(_("sh.trashNote"))
         for e in replace:
             w(f"# [{e['agent']}] {e['suggestion']}")
             w(f"# {e['replace_cmd']}")

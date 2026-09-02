@@ -7,6 +7,7 @@ import {
 } from '../lib/api';
 import { PathChain } from '../lib/paths';
 import { LinkDocToggle } from '../lib/linkDoc';
+import { Segmented } from '../components/Segmented';
 import { categoryLabel, t, useT, vendorLabel, type MsgKey } from '../lib/i18n';
 
 /* Colors carry ONE job here: how a skill is attached. The split matters for
@@ -434,12 +435,15 @@ export default function Topology() {
             {t('to.problemsOnly')}
           </Switch.Content>
         </Switch>
-        <Switch isSelected={asTable} onChange={setAsTable}>
-          <Switch.Content>
-            <Switch.Control><Switch.Thumb /></Switch.Control>
-            {t('to.table')}
-          </Switch.Content>
-        </Switch>
+        <Segmented
+          label={t('to.view')}
+          value={asTable ? 'table' : 'chart'}
+          onChange={(v) => setAsTable(v === 'table')}
+          options={[
+            { id: 'chart', label: t('to.view.chart') },
+            { id: 'table', label: t('to.view.table') },
+          ]}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-4 gap-y-2">

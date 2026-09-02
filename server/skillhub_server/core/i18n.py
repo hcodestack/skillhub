@@ -260,21 +260,24 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "rep.loose.intro": (
         "Standalone copies; editing the library copy never reaches them. **Confirm by "
         "hand that a copy holds no local edits before replacing it**, which is why the "
-        "commands below ship commented out in the script.\n",
+        "commands below ship commented out in the script. The script never deletes a "
+        "copy: it moves it to a dated trash directory, so a wrong call is an undo, not "
+        "a loss.\n",
         "独立拷贝，改库内真源不会同步。**替换前需人工确认副本没有本地改动**，"
-        "所以下列命令在脚本里是注释状态。\n",
+        "所以下列命令在脚本里是注释状态。脚本不删副本：只移入带日期的回收目录，"
+        "判断错了可以撤回。\n",
     ),
     "rep.loose.cols": ("| Tool | Entry | In library as | Suggestion |",
                        "| 工具 | 条目 | 库内对应 | 建议 |"),
     "rep.loose.haveLib": (
         "The library already has {id}: confirm this copy has no local edits, then "
-        "delete it and replace it with a symlink to the library copy",
-        "库内已有 {id}：确认这份副本没有本地改动后，删除并替换为指向库内真源的软链",
+        "move it to trash and replace it with a symlink to the library copy",
+        "库内已有 {id}：确认这份副本没有本地改动后，移入回收目录并替换为指向库内真源的软链",
     ),
     "rep.loose.noLib": (
-        "Not in the library yet: copy it in first, then delete this copy and replace "
-        "it with a symlink",
-        "库内没有对应技能：先复制入库，再删除此副本、换软链",
+        "Not in the library yet: copy it in first, then move this copy to trash and "
+        "replace it with a symlink",
+        "库内没有对应技能：先复制入库，再把此副本移入回收目录、换软链",
     ),
     "rep.none": ("None.\n", "无。\n"),
     "rep.dupes.h": ("## Several copies of one skill ({n}, drifted: {drifted})\n",
@@ -336,6 +339,13 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "# ───── Part 3: stray copy → symlink (confirm the copy has NO local edits "
         "first! commented out by default) ─────",
         "# ───── 第 3 部分：散落实体 → 软链（需先确认副本无本地改动！默认注释）─────",
+    ),
+    "sh.trashNote": (
+        "# Copies are MOVED to $TRASH (override with SKILLHUB_TRASH=...), never "
+        "deleted — undo is `mv` back. Delete the trash directory yourself once you "
+        "are sure.",
+        "# 副本只 MOVE 到 $TRASH（可用 SKILLHUB_TRASH=... 覆盖），绝不删除——"
+        "撤回就是 mv 回去。确认无误后再自行删掉回收目录。",
     ),
 }
 

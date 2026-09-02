@@ -1,6 +1,7 @@
 import { Chip } from '@heroui/react';
 import { agentLabel, isSharedDir } from '../lib/api';
 import { t } from '../lib/i18n';
+import { ToolIcon } from './ToolIcon';
 
 // The three agents with usage tracking keep their established colors; the rest
 // get a stable hue from the key so 40+ tools stay distinguishable without a
@@ -32,7 +33,8 @@ function agentClass(agent: string): string {
 
 export function AgentChip({ agent, count, title }: { agent: string; count?: number; title?: string }) {
   return (
-    <Chip size="sm" className={agentClass(agent)} title={title}>
+    <Chip size="sm" className={`${agentClass(agent)} gap-1`} title={title}>
+      <ToolIcon agent={agent} size={12} />
       {isSharedDir(agent) ? t('agent.shared') : ''}
       {agentLabel(agent)}
       {count != null && count > 0 ? ` ×${count}` : ''}

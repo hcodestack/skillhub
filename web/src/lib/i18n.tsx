@@ -33,9 +33,15 @@ const M = {
     'Every skill you own — inventory · load topology · usage',
     '本地技能总揽 — 库存 · 载入拓扑 · 调用记录',
   ],
-  'app.dark': ['Dark', '深色'],
   'app.modules': ['Modules', '模块'],
   'app.language': ['Language', '语言'],
+  'app.theme': ['Appearance', '外观'],
+  'app.theme.system': ['System', '跟随系统'],
+  'app.theme.light': ['Light', '浅色'],
+  'app.theme.dark': ['Dark', '深色'],
+  'app.badge.health': [
+    '{n} findings need attention', '{n} 项发现需要关注'],
+  'app.badge.updates': ['{n} skills have an upstream update', '{n} 个技能有上游更新'],
 
   'nav.overview': ['Overview', '总览'],
   'nav.topology': ['Topology', '拓扑'],
@@ -436,7 +442,9 @@ const M = {
   'to.breadcrumb': ['Breadcrumb', '层级路径'],
   'to.summary': ['{skills} skills · {loads} load sites', '{skills} 个技能 · {loads} 处载入'],
   'to.problemsOnly': ['Problems only', '只看问题'],
-  'to.table': ['Table', '表格'],
+  'to.view': ['View', '视图'],
+  'to.view.chart': ['Chart', '图'],
+  'to.view.table': ['Table', '表格'],
   'to.hint.groups': ['Left column: {by} (click to enter)', '左列：{by}（点击进入）'],
   'to.hint.group': [
     'Left column: skills (click to see where each one is loaded)',
