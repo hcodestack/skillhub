@@ -17,6 +17,10 @@
 
 [English](README.md) · **简体中文**
 
+<sub>2026-09-18 由 <code>hcodestack/skillhub</code> 改名而来。旧链接会重定向，
+你不需要改动任何东西——哪些东西刻意保留了旧名、以及仍可用但已弃用的
+<code>SKILLHUB_*</code> 环境变量，见[更新日志](CHANGELOG.zh-CN.md)。</sub>
+
 </div>
 
 ---
@@ -292,6 +296,8 @@ Skillmgmnt 对技能携带的全部文件跑一遍确定性红旗审查：读取
 - **不写你的技能**——hub 侧唯一写操作是可选的 git 快进按钮，MCP 面全部只读
 
 ## 📚 参考来源
+
+版本历史见[更新日志](CHANGELOG.zh-CN.md)。
 
 **Skills 扩展**
 

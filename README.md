@@ -17,6 +17,11 @@ See every skill you own, every tool that loads it, what actually gets used — a
 
 **English** · [简体中文](README.zh-CN.md)
 
+<sub>Renamed from `hcodestack/skillhub` on 2026-09-18. Old links redirect and
+nothing needs changing — see the [changelog](CHANGELOG.md) for what kept the old
+name on purpose, and for the `SKILLHUB_*` environment variables that still work
+but are deprecated.</sub>
+
 </div>
 
 ---
@@ -325,6 +330,8 @@ signals for a human (or your agent) to judge, never silent verdicts.
   optional git fast-forward button, and the MCP surface is read-only
 
 ## 📚 References
+
+Version history is in the [changelog](CHANGELOG.md).
 
 **The Skills extension**
 
