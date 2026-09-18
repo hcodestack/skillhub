@@ -2,10 +2,10 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-topology-dark.png">
-  <img src="docs/assets/hero-topology-light.png" alt="Skillhub topology — every skill, every tool it is loaded into, colored by link health" width="920">
+  <img src="docs/assets/hero-topology-light.png" alt="Skillmgmnt topology — every skill, every tool it is loaded into, colored by link health" width="920">
 </picture>
 
-# Skillhub
+# Skillmgmnt
 
 **The read-only observability dashboard for your AI-agent skills.**
 See every skill you own, every tool that loads it, what actually gets used — and what's silently broken.
@@ -23,7 +23,7 @@ See every skill you own, every tool that loads it, what actually gets used — a
 
 Skills (`SKILL.md` folders) are how AI coding tools learn your workflows — and
 they multiply fast: one library, a dozen tools, symlinks here, copies there,
-leftovers everywhere. Skillhub answers the four questions nobody can answer by
+leftovers everywhere. Skillmgmnt answers the four questions nobody can answer by
 hand anymore:
 
 1. **What do I have?** — a searchable catalog of your whole skills library
@@ -48,14 +48,14 @@ hand anymore:
 | 📋 **Findings → action** | Export a governance report (paste it to your agent as a work order) or a reviewable remediation script whose *uncommented* commands are provably safe |
 | 🤖 **MCP native** | Seven read-only tools let Claude Code / Codex query the hub directly: *"which skills does nobody use?" "is X safe?" "fetch the remediation plan"* — your agent executes, with your confirmation, on the machine where the files are |
 | 🖥 **Runs anywhere** | One machine (built-in self-reporter, zero cron), Docker, or a LAN hub on a home server/NAS aggregating every machine you work on |
-| 🔌 **Sees skills served over MCP** | A skill served over MCP ([SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)) is never installed — the extension requires hosts to cache it outside every skill-discovery path, so a scanner cannot see it. Skillhub reads which servers your tools point at, asks the ones it can, and reports what they serve and what it costs you in context |
+| 🔌 **Sees skills served over MCP** | A skill served over MCP ([SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)) is never installed — the extension requires hosts to cache it outside every skill-discovery path, so a scanner cannot see it. Skillmgmnt reads which servers your tools point at, asks the ones it can, and reports what they serve and what it costs you in context |
 | 🌍 **English and 中文** | The UI ships in English and switches to Simplified Chinese from the header — including the text the server composes (health findings, the exported governance report). One catalog per side, two strings per message, so translations cannot drift |
-| 🔒 **Read-only by design** | Skillhub observes; your existing workflow keeps managing. It can never fight your tooling or move your files |
+| 🔒 **Read-only by design** | Skillmgmnt observes; your existing workflow keeps managing. It can never fight your tooling or move your files |
 
 <div align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview-dark.png">
-  <img src="docs/assets/overview-light.png" alt="Skillhub overview — stat tiles and the full skill catalog" width="920">
+  <img src="docs/assets/overview-light.png" alt="Skillmgmnt overview — stat tiles and the full skill catalog" width="920">
 </picture>
 <br><sub>The overview: problem tiles deep-link straight into their findings.</sub>
 </div>
@@ -77,7 +77,7 @@ curl -fsSL https://raw.githubusercontent.com/hcodestack/skillhub/main/install.sh
 or, from a clone:
 
 ```bash
-git clone https://github.com/hcodestack/skillhub.git ~/skillhub
+git clone https://github.com/hcodestack/skillmgmnt.git ~/skillhub
 cd ~/skillhub && ./setup.sh
 ```
 
@@ -106,14 +106,14 @@ boots against the bundled demo library.*
 
 ### 🤖 Don't like terminals? Let your agent install it
 
-Skillhub ships an **agent runbook** ([AGENTS.md](AGENTS.md)) that Claude
+Skillmgmnt ships an **agent runbook** ([AGENTS.md](AGENTS.md)) that Claude
 Code, Codex and similar tools follow: what to check, what to ask you (in your
 language), how to find your skills library, the exact non-interactive install,
 and how to *prove* the result before reporting back. Paste this into your
 agent:
 
-> Install Skillhub on this machine: clone
-> `https://github.com/hcodestack/skillhub` to `~/skillhub`, then read
+> Install Skillmgmnt on this machine: clone
+> `https://github.com/hcodestack/skillmgmnt` to `~/skillhub`, then read
 > `AGENTS.md` in the checkout and follow its Install runbook. Ask me only
 > what it tells you to ask. When you're done, show me what my dashboard says.
 
@@ -179,18 +179,25 @@ Everything is environment variables; only the first is required.
 
 | Variable | Meaning |
 |---|---|
-| `SKILLHUB_LIBRARY_ROOT` | your skills library directory (scanned recursively for `SKILL.md`) |
-| `SKILLHUB_LIBRARY_INDEX` | *optional*: pre-built JSON catalog used instead of scanning; re-synced on mtime change |
-| `SKILLHUB_LIBRARY_SUBDIRS` | *optional*, comma-separated: restrict lookup to these first-level subdirs |
-| `SKILLHUB_INSTALLER_SUBDIR` | *optional*: one subdir owned by an installer CLI (hub labels, never updates) |
-| `SKILLHUB_ENTITY_WHITELIST` | *optional*: `agent:entry,…` pairs that are legitimately real dirs in tool entry dirs |
-| `SKILLHUB_PROVENANCE_FILE` | *optional*: JSON mapping skill families to upstream repos (schema in `core/provenance.py`) |
-| `SKILLHUB_LIBRARY_DISPLAY_ROOT` | library path as *users* see it, for copy-pasteable commands when the hub runs in Docker |
-| `SKILLHUB_SELF_REPORT` | `auto` (default) / `1` / `0` — the built-in self-reporter; auto = on for source checkouts outside containers |
-| `SKILLHUB_DB` / `SKILLHUB_HOST` / `SKILLHUB_PORT` / `SKILLHUB_STATIC` | storage & serving knobs |
+| `SKILLMGMNT_LIBRARY_ROOT` | your skills library directory (scanned recursively for `SKILL.md`) |
+| `SKILLMGMNT_LIBRARY_INDEX` | *optional*: pre-built JSON catalog used instead of scanning; re-synced on mtime change |
+| `SKILLMGMNT_LIBRARY_SUBDIRS` | *optional*, comma-separated: restrict lookup to these first-level subdirs |
+| `SKILLMGMNT_INSTALLER_SUBDIR` | *optional*: one subdir owned by an installer CLI (hub labels, never updates) |
+| `SKILLMGMNT_ENTITY_WHITELIST` | *optional*: `agent:entry,…` pairs that are legitimately real dirs in tool entry dirs |
+| `SKILLMGMNT_PROVENANCE_FILE` | *optional*: JSON mapping skill families to upstream repos (schema in `core/provenance.py`) |
+| `SKILLMGMNT_LIBRARY_DISPLAY_ROOT` | library path as *users* see it, for copy-pasteable commands when the hub runs in Docker |
+| `SKILLMGMNT_SELF_REPORT` | `auto` (default) / `1` / `0` — the built-in self-reporter; auto = on for source checkouts outside containers |
+| `SKILLMGMNT_DB` / `SKILLMGMNT_HOST` / `SKILLMGMNT_PORT` / `SKILLMGMNT_STATIC` | storage & serving knobs |
 
 > **Note** · The dashboard has no authentication — it binds to `127.0.0.1` by
-> default. Set `SKILLHUB_HOST=0.0.0.0` only on a network you trust.
+> default. Set `SKILLMGMNT_HOST=0.0.0.0` only on a network you trust.
+
+> **Renamed from `SKILLHUB_*`** · This project used to be called Skillhub, and
+> the old prefix still works: each variable is read as `SKILLMGMNT_<name>` first
+> and falls back to `SKILLHUB_<name>`. Existing compose files and shell profiles
+> keep working, and the server prints a one-line notice at startup naming any
+> old variable it is still reading. The fallback is deprecated and will be
+> removed in a release that says so.
 
 ## 🔌 Skills served over MCP
 
@@ -209,6 +216,14 @@ link state, so they get their own vocabulary rather than a fifth kind of link.
 What they cost is their name and description in every turn's context, and
 nothing else until one is actually used — so that number leads, next to the
 resident cost of your local skills on the overview.
+
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mcp-dark.png">
+  <img src="docs/assets/mcp-light.png" alt="Skillmgmnt MCP tab — servers, the skills they serve, and the probes deliberately refused" width="920">
+</picture>
+<br><sub>The MCP tab: what each server serves, what it costs in context, and which probes were refused on purpose.</sub>
+</div>
 
 ### What it does, and what it refuses to do
 
@@ -291,7 +306,7 @@ rewording a rule or switching language needs no rescan. Your own directory names
 ## 🛡 Why the safety review exists
 
 Every skill is code someone else wrote that your agent runs **with your
-permissions**. On every sync, Skillhub runs a deterministic red-flag review
+permissions**. On every sync, Skillmgmnt runs a deterministic red-flag review
 over every file a skill ships: reading agent memory/credential files, browser
 session access, raw-IP endpoints, `curl | sh`, eval/exec on external input,
 sudo, out-of-tree writes, outbound POSTs, unpinned installs,

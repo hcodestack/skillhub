@@ -1,4 +1,4 @@
-# Skillhub deployment — build the image on a dev machine, ship it, run it
+# Skillmgmnt deployment — build the image on a dev machine, ship it, run it
 # anywhere Docker runs (a NAS, a home server, the same machine):
 #   cd web && pnpm build
 #   docker build --platform linux/amd64 -f deploy/Dockerfile.release -t skillhub:<ver> .
@@ -15,7 +15,7 @@ services:
       # TZ: "UTC"
       # the hub sees the library at /library; commands it renders for copy-paste
       # should show the path as YOUR machines see it:
-      SKILLHUB_LIBRARY_DISPLAY_ROOT: "/path/to/skills-library"
+      SKILLMGMNT_LIBRARY_DISPLAY_ROOT: "/path/to/skills-library"
     volumes:
       - skillhub-data:/data
       # read-write only if you want one-click `git pull --ff-only` updates for

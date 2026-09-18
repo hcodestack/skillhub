@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Skillhub reporter — scans this machine's agent entry dirs and session logs,
+"""Skillmgmnt reporter — scans this machine's agent entry dirs and session logs,
 then pushes inventory snapshots + usage events to the hub. Stdlib only, so any
 LAN machine can run it with a bare python3.
 
@@ -33,7 +33,7 @@ USAGE_ADAPTERS = [claude_code, codex, workbuddy]
 # by this single scanner — see adapters/tool_table.py.
 INVENTORY_SCANNER = tools
 
-STATE_DIR = Path(os.environ.get("SKILLHUB_STATE", str(Path.home() / ".local/state/skillhub")))
+STATE_DIR = Path(os.environ.get("SKILLMGMNT_STATE", str(Path.home() / ".local/state/skillhub")))
 STATE_FILE = STATE_DIR / "reporter-state.json"
 SPOOL_DIR = STATE_DIR / "spool"
 CHUNK = 4000  # max events per POST
@@ -94,11 +94,11 @@ def flush_spool(server: str) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Skillhub per-machine reporter")
-    ap.add_argument("--server", default=os.environ.get("SKILLHUB_SERVER", "http://127.0.0.1:8787"))
+    ap = argparse.ArgumentParser(description="Skillmgmnt per-machine reporter")
+    ap.add_argument("--server", default=os.environ.get("SKILLMGMNT_SERVER", "http://127.0.0.1:8787"))
     ap.add_argument("--backfill", action="store_true", help="ignore cursors, re-scan full history")
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--host-label", default=os.environ.get("SKILLHUB_HOST_LABEL", ""))
+    ap.add_argument("--host-label", default=os.environ.get("SKILLMGMNT_HOST_LABEL", ""))
     args = ap.parse_args()
 
     # single-instance lock: hook + launchd may fire concurrently

@@ -1,9 +1,9 @@
 """Library module — sync the skill catalog.
 
 Two sources, in order of preference:
-  1. SKILLHUB_LIBRARY_INDEX, if set and readable — a pre-built JSON catalog
+  1. SKILLMGMNT_LIBRARY_INDEX, if set and readable — a pre-built JSON catalog
      maintained by an external tool; the hub re-syncs when its mtime changes.
-  2. Otherwise the hub scans SKILLHUB_LIBRARY_ROOT itself: every directory
+  2. Otherwise the hub scans SKILLMGMNT_LIBRARY_ROOT itself: every directory
      holding a SKILL.md becomes a skill, its id the path relative to the
      library root. No layout convention, no extra tooling required.
 """
@@ -160,7 +160,7 @@ def _sync_library() -> dict:
         data = _scan_library()
     else:
         return {"ok": False,
-                "error": "no library configured — set SKILLHUB_LIBRARY_ROOT"}
+                "error": "no library configured — set SKILLMGMNT_LIBRARY_ROOT"}
     now = time.strftime("%Y-%m-%dT%H:%M:%S")
     ids: set[str] = set()
     with tx():

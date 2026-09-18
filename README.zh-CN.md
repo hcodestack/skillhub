@@ -2,10 +2,10 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-topology-dark.png">
-  <img src="docs/assets/hero-topology-light.png" alt="Skillhub 载入拓扑——每个技能、每个载入它的工具，按链接健康度着色" width="920">
+  <img src="docs/assets/hero-topology-light.png" alt="Skillmgmnt 载入拓扑——每个技能、每个载入它的工具，按链接健康度着色" width="920">
 </picture>
 
-# Skillhub
+# Skillmgmnt
 
 **AI agent 技能的只读观测台。**
 看清你拥有的每个技能、载入它的每个工具、真实的使用情况——以及悄悄坏掉的那些。
@@ -22,7 +22,7 @@
 ---
 
 技能（`SKILL.md` 目录）是 AI 编码工具学会你工作流的方式——而它们膨胀得飞快：
-一个库、十几个工具、这里软链、那里拷贝、到处是历史遗留。Skillhub 回答四个
+一个库、十几个工具、这里软链、那里拷贝、到处是历史遗留。Skillmgmnt 回答四个
 再也没法靠人肉回答的问题：
 
 1. **我有哪些技能？**——整个技能库的可搜索目录
@@ -46,14 +46,14 @@
 | 📋 **发现 → 行动** | 导出治理报告（贴给你的 agent 当工单）或可审阅的清理脚本——**未注释的命令只做可证明安全的事** |
 | 🤖 **MCP 原生** | 七个只读工具让 Claude Code / Codex 直接查询 hub：「哪些技能没人用？」「X 安全吗？」「取清理方案」——执行在*你的* agent 里、经*你*确认、在文件所在的机器上 |
 | 🖥 **哪儿都能跑** | 单机（内置自上报，零 cron）、Docker、或家用服务器/NAS 上的局域网 hub 聚合你的每台机器 |
-| 🔌 **看得见 MCP 提供的技能** | MCP 提供的技能（[SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)）从不被「装」到任何地方——规范要求宿主把它缓存在所有技能发现路径之外，扫文件系统看不到。Skillhub 读出你的工具指向哪些服务器，能问的就去问，报出它们提供什么、以及在上下文里要你花多少 |
+| 🔌 **看得见 MCP 提供的技能** | MCP 提供的技能（[SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)）从不被「装」到任何地方——规范要求宿主把它缓存在所有技能发现路径之外，扫文件系统看不到。Skillmgmnt 读出你的工具指向哪些服务器，能问的就去问，报出它们提供什么、以及在上下文里要你花多少 |
 | 🌍 **中英双语** | 界面默认英文，右上角一键切中文——**服务端拼的文案也跟着切**（健康发现、导出的治理报告）。前后端各一份目录、每条消息两串并排，译文不会悄悄掉队 |
-| 🔒 **只读设计** | Skillhub 只观测；管理仍归你既有的工作流。它永远不会和你的工具打架、不会动你的文件 |
+| 🔒 **只读设计** | Skillmgmnt 只观测；管理仍归你既有的工作流。它永远不会和你的工具打架、不会动你的文件 |
 
 <div align="center">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview-dark.png">
-  <img src="docs/assets/overview-light.png" alt="Skillhub 总览——指标磁贴与全量技能目录" width="920">
+  <img src="docs/assets/overview-light.png" alt="Skillmgmnt 总览——指标磁贴与全量技能目录" width="920">
 </picture>
 <br><sub>总览页：问题磁贴一键直达对应明细。</sub>
 </div>
@@ -75,7 +75,7 @@ curl -fsSL https://raw.githubusercontent.com/hcodestack/skillhub/main/install.sh
 或从克隆开始：
 
 ```bash
-git clone https://github.com/hcodestack/skillhub.git ~/skillhub
+git clone https://github.com/hcodestack/skillmgmnt.git ~/skillhub
 cd ~/skillhub && ./setup.sh
 ```
 
@@ -105,7 +105,7 @@ skillhub stop
 Codex 等工具照着执行：先检查什么、用你的语言问你什么、怎么帮你找到技能库、
 跑哪条非交互安装、装完如何*自证*再向你汇报。把这段贴给你的 agent：
 
-> 在这台机器上安装 Skillhub：把 `https://github.com/hcodestack/skillhub`
+> 在这台机器上安装 Skillmgmnt：把 `https://github.com/hcodestack/skillmgmnt`
 > 克隆到 `~/skillhub`，然后阅读检出目录里的 `AGENTS.md` 并按其 Install
 > 运行手册执行。只问手册要求你问我的问题。装完后，告诉我看板上显示了什么。
 
@@ -168,18 +168,23 @@ reporter/install-launchd.sh http://<hub-host>:8787   # 或 install-cron.sh
 
 | 变量 | 含义 |
 |---|---|
-| `SKILLHUB_LIBRARY_ROOT` | 技能库目录（递归扫描 `SKILL.md`） |
-| `SKILLHUB_LIBRARY_INDEX` | *可选*：外部预生成的目录 JSON，代替扫描；文件变了自动重同步 |
-| `SKILLHUB_LIBRARY_SUBDIRS` | *可选*，逗号分隔：只在这些一级子目录下解析技能 |
-| `SKILLHUB_INSTALLER_SUBDIR` | *可选*：某个由安装器 CLI 管理的子目录（hub 只标注、不代更新） |
-| `SKILLHUB_ENTITY_WHITELIST` | *可选*：`agent:entry,…`——入口目录里合法的实体目录，不计为散落 |
-| `SKILLHUB_PROVENANCE_FILE` | *可选*：技能族 → 上游仓库映射 JSON（schema 见 `core/provenance.py`） |
-| `SKILLHUB_LIBRARY_DISPLAY_ROOT` | 用户视角的库路径（hub 在 Docker 里时让复制出的命令可直接粘贴） |
-| `SKILLHUB_SELF_REPORT` | `auto`(默认)/`1`/`0`——内置自上报；auto=源码运行且不在容器内时开启 |
-| `SKILLHUB_DB` / `SKILLHUB_HOST` / `SKILLHUB_PORT` / `SKILLHUB_STATIC` | 存储与服务参数 |
+| `SKILLMGMNT_LIBRARY_ROOT` | 技能库目录（递归扫描 `SKILL.md`） |
+| `SKILLMGMNT_LIBRARY_INDEX` | *可选*：外部预生成的目录 JSON，代替扫描；文件变了自动重同步 |
+| `SKILLMGMNT_LIBRARY_SUBDIRS` | *可选*，逗号分隔：只在这些一级子目录下解析技能 |
+| `SKILLMGMNT_INSTALLER_SUBDIR` | *可选*：某个由安装器 CLI 管理的子目录（hub 只标注、不代更新） |
+| `SKILLMGMNT_ENTITY_WHITELIST` | *可选*：`agent:entry,…`——入口目录里合法的实体目录，不计为散落 |
+| `SKILLMGMNT_PROVENANCE_FILE` | *可选*：技能族 → 上游仓库映射 JSON（schema 见 `core/provenance.py`） |
+| `SKILLMGMNT_LIBRARY_DISPLAY_ROOT` | 用户视角的库路径（hub 在 Docker 里时让复制出的命令可直接粘贴） |
+| `SKILLMGMNT_SELF_REPORT` | `auto`(默认)/`1`/`0`——内置自上报；auto=源码运行且不在容器内时开启 |
+| `SKILLMGMNT_DB` / `SKILLMGMNT_HOST` / `SKILLMGMNT_PORT` / `SKILLMGMNT_STATIC` | 存储与服务参数 |
 
 > **注意** · 看板没有鉴权——默认只绑 `127.0.0.1`。仅在可信网络上设
-> `SKILLHUB_HOST=0.0.0.0`。
+> `SKILLMGMNT_HOST=0.0.0.0`。
+
+> **从 `SKILLHUB_*` 改名而来** · 本项目原名 Skillhub，旧前缀仍然可用：
+> 每个变量先读 `SKILLMGMNT_<名>`，读不到再回落 `SKILLHUB_<名>`。
+> 已有的 compose 文件和 shell 配置不会断，服务器启动时会打一行提示，
+> 指出它仍在读哪些旧变量。该回落已标记弃用，将在明确说明的某个版本里移除。
 
 ## 🔌 MCP 提供的技能
 
@@ -195,6 +200,14 @@ reporter/install-launchd.sh http://<hub-host>:8787   # 或 install-cron.sh
 所以另起一套词，而不是硬塞成第五种链接。它们的成本是每一轮上下文里的名称和描述，
 在真正被用到之前再没有别的——所以这个数字排在最前面，
 和总览里本地技能的常驻成本对着看。
+
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/mcp-dark.png">
+  <img src="docs/assets/mcp-light.png" alt="Skillmgmnt MCP tab — servers, the skills they serve, and the probes deliberately refused" width="920">
+</picture>
+<br><sub>MCP 页：每台服务器提供什么、在上下文里要花多少、以及哪些探测是刻意放弃的。</sub>
+</div>
 
 ### 它做什么，以及刻意不做什么
 
@@ -265,7 +278,7 @@ reporter/install-launchd.sh http://<hub-host>:8787   # 或 install-cron.sh
 ## 🛡 为什么要有安全审查
 
 每个技能都是别人写的、由你的 agent **以你的权限**运行的代码。每次同步时
-Skillhub 对技能携带的全部文件跑一遍确定性红旗审查：读取 agent 记忆/凭据
+Skillmgmnt 对技能携带的全部文件跑一遍确定性红旗审查：读取 agent 记忆/凭据
 文件、动浏览器会话、直连裸 IP、`curl | sh`、对外部输入 eval/exec、sudo、
 写系统路径、向外 POST、未固定版本安装、base64 解码后执行。每条命中带文件、
 行号、摘录与理由——供人（或你的 agent）判断的信号，绝不是无声的判决。

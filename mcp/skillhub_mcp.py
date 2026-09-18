@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Skillhub MCP server — lets your own agent query the hub as a native tool.
+"""Skillmgmnt MCP server — lets your own agent query the hub as a native tool.
 
 Runs on your machine (stdio), talks to the hub over HTTP. The model and any
 keys stay in your agent; the hub only answers questions. That split is the
@@ -16,7 +16,7 @@ Pure stdlib, same as the reporter, so it runs anywhere Python does without an
 install step.
 
 Usage:
-    skillhub_mcp.py [hub-url]          # default: $SKILLHUB_URL, else localhost
+    skillhub_mcp.py [hub-url]          # default: $SKILLMGMNT_URL, else localhost
 
 Register with Claude Code:
     claude mcp add skillhub -- /path/to/skillhub_mcp.py http://<hub-host>:8787
@@ -30,7 +30,7 @@ import urllib.parse
 import urllib.request
 
 HUB = (sys.argv[1] if len(sys.argv) > 1
-       else os.environ.get("SKILLHUB_URL", "http://127.0.0.1:8787")).rstrip("/")
+       else os.environ.get("SKILLMGMNT_URL", "http://127.0.0.1:8787")).rstrip("/")
 TIMEOUT = 20
 PROTOCOL_VERSION = "2025-06-18"
 
@@ -170,7 +170,7 @@ def t_usage_events(args):
 
 
 TOOLS = [
-    ("overview", "Skillhub 总览：库内技能数、已载入数、调用数、工具数、断链数、"
+    ("overview", "Skillmgmnt 总览：库内技能数、已载入数、调用数、工具数、断链数、"
                  "元数据常驻 token 数，以及上报的主机列表。回答「现在整体什么状况」。",
      {"type": "object", "properties": {}}, t_overview),
     ("search_skills", "按关键词搜索技能（匹配 id/名称/描述/分类/标签，多词为 AND）。"
@@ -259,7 +259,7 @@ def handle(req):
         except (urllib.error.URLError, OSError) as e:
             # the hub being down is an answerable condition, not a crash: say so
             # in-band so the agent can tell the user instead of losing the server
-            text, err = f"Skillhub 不可达（{HUB}）：{e}", True
+            text, err = f"Skillmgmnt 不可达（{HUB}）：{e}", True
         except Exception as e:
             text, err = f"{type(e).__name__}: {e}", True
         else:

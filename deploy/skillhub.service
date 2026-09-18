@@ -1,13 +1,13 @@
-# Skillhub server — systemd user unit (Linux "start at login").
+# Skillmgmnt server — systemd user unit (Linux "start at login").
 #   1. replace the three __PLACEHOLDERS__
 #   2. cp deploy/skillhub.service ~/.config/systemd/user/
 #   3. systemctl --user enable --now skillhub
 [Unit]
-Description=Skillhub server
+Description=Skillmgmnt server
 
 [Service]
-Environment=SKILLHUB_LIBRARY_ROOT=__LIBRARY__
-Environment=SKILLHUB_PORT=__PORT__
+Environment=SKILLMGMNT_LIBRARY_ROOT=__LIBRARY__
+Environment=SKILLMGMNT_PORT=__PORT__
 WorkingDirectory=__REPO__/server
 ExecStart=__REPO__/server/.venv/bin/skillhub-server
 Restart=on-failure

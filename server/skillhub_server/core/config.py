@@ -1,35 +1,38 @@
 """Runtime configuration, overridable via environment variables.
 
-SKILLHUB_LIBRARY_ROOT   the skills library directory (the one required setting).
+Variables are named SKILLMGMNT_*. The former SKILLHUB_* names still
+work and are deprecated; see `_env` below.
+
+SKILLMGMNT_LIBRARY_ROOT   the skills library directory (the one required setting).
                         The hub scans it recursively for directories containing
                         a SKILL.md — no index file or particular layout needed.
-SKILLHUB_LIBRARY_INDEX  OPTIONAL: path to a pre-built index JSON
+SKILLMGMNT_LIBRARY_INDEX  OPTIONAL: path to a pre-built index JSON
                         ([{"id","name","description","source"}, ...]). When set
                         and present it is used instead of scanning, and the hub
                         re-syncs whenever the file's mtime changes. Useful when
                         an external tool already maintains a catalog.
-SKILLHUB_LIBRARY_SUBDIRS
+SKILLMGMNT_LIBRARY_SUBDIRS
                         OPTIONAL, comma-separated: restrict skill lookup to
                         these first-level subdirectories (e.g. "vendored,own").
                         Unset = the whole library root.
-SKILLHUB_INSTALLER_SUBDIR
+SKILLMGMNT_INSTALLER_SUBDIR
                         OPTIONAL: one subdirectory whose skills are managed by
                         their own installer CLI — the hub reports them but never
                         suggests updating them itself.
-SKILLHUB_ENTITY_WHITELIST
+SKILLMGMNT_ENTITY_WHITELIST
                         OPTIONAL, comma-separated "agent:entry_name" pairs that
                         are legitimately real directories inside tool entry dirs
                         (not stray copies) and should not be flagged.
-SKILLHUB_PROVENANCE_FILE
+SKILLMGMNT_PROVENANCE_FILE
                         OPTIONAL: JSON file mapping skill families to upstream
                         repos for the update checker — see core/provenance.py
                         for the schema.
-SKILLHUB_LIBRARY_DISPLAY_ROOT
+SKILLMGMNT_LIBRARY_DISPLAY_ROOT
                         library path as the USER sees it. The hub may see the
                         library at its own mount point (/library in Docker),
                         which is useless in a command someone pastes into their
                         own terminal — copyable commands use this instead.
-SKILLHUB_SELF_REPORT    "auto" (default) | "1" | "0". When on, the server runs
+SKILLMGMNT_SELF_REPORT    "auto" (default) | "1" | "0". When on, the server runs
                         the bundled reporter against itself every 15 minutes —
                         so a single-machine install needs no launchd/cron at
                         all. "auto" = on when the reporter script is present
@@ -37,9 +40,9 @@ SKILLHUB_SELF_REPORT    "auto" (default) | "1" | "0". When on, the server runs
                         scanning its own $HOME would observe nothing useful).
                         Multi-machine setups keep per-machine reporters and
                         can leave this on for the hub machine itself.
-SKILLHUB_DB             SQLite database path
-SKILLHUB_STATIC         built web SPA dir served at /
-SKILLHUB_HOST / SKILLHUB_PORT
+SKILLMGMNT_DB             SQLite database path
+SKILLMGMNT_STATIC         built web SPA dir served at /
+SKILLMGMNT_HOST / SKILLMGMNT_PORT
 """
 import os
 from pathlib import Path
@@ -48,22 +51,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent  # server/
 
 
 def _env(key: str, default: str) -> str:
-    return os.environ.get(key, default)
+    """Read `SKILLMGMNT_<key>`, falling back to the old `SKILLHUB_<key>`.
+
+    The project was renamed after people had already put the old names into
+    compose files and shell profiles. Dropping them would break those installs
+    for a cosmetic reason, so the old prefix keeps working and is documented as
+    deprecated. Remove the fallback only in a release that says it is doing so.
+    """
+    for prefix in ("SKILLMGMNT_", "SKILLHUB_"):
+        v = os.environ.get(prefix + key)
+        if v is not None:
+            return v
+    return default
+
+
+def legacy_env_in_use() -> list[str]:
+    """Old-prefix variables that are actually set, for a startup warning."""
+    return sorted(k for k in os.environ
+                  if k.startswith("SKILLHUB_")
+                  and ("SKILLMGMNT_" + k[len("SKILLHUB_"):]) not in os.environ)
 
 
 class Settings:
-    db_path = _env("SKILLHUB_DB", str(BASE_DIR / "data" / "skillhub.db"))
-    library_index = _env("SKILLHUB_LIBRARY_INDEX", "")
-    library_root = _env("SKILLHUB_LIBRARY_ROOT", "")
-    library_subdirs = _env("SKILLHUB_LIBRARY_SUBDIRS", "")
-    installer_subdir = _env("SKILLHUB_INSTALLER_SUBDIR", "")
-    entity_whitelist_raw = _env("SKILLHUB_ENTITY_WHITELIST", "")
-    provenance_file = _env("SKILLHUB_PROVENANCE_FILE", "")
-    library_display_root = _env("SKILLHUB_LIBRARY_DISPLAY_ROOT", "")
-    static_dir = _env("SKILLHUB_STATIC", str(BASE_DIR.parent / "web" / "dist"))
-    host = _env("SKILLHUB_HOST", "127.0.0.1")
-    port = int(_env("SKILLHUB_PORT", "8787"))
-    self_report = _env("SKILLHUB_SELF_REPORT", "auto")
+    db_path = _env("DB", str(BASE_DIR / "data" / "skillhub.db"))
+    library_index = _env("LIBRARY_INDEX", "")
+    library_root = _env("LIBRARY_ROOT", "")
+    library_subdirs = _env("LIBRARY_SUBDIRS", "")
+    installer_subdir = _env("INSTALLER_SUBDIR", "")
+    entity_whitelist_raw = _env("ENTITY_WHITELIST", "")
+    provenance_file = _env("PROVENANCE_FILE", "")
+    library_display_root = _env("LIBRARY_DISPLAY_ROOT", "")
+    static_dir = _env("STATIC", str(BASE_DIR.parent / "web" / "dist"))
+    host = _env("HOST", "127.0.0.1")
+    port = int(_env("PORT", "8787"))
+    self_report = _env("SELF_REPORT", "auto")
 
     @property
     def reporter_script(self) -> str:
@@ -92,7 +113,7 @@ class Settings:
     def library_bases(self) -> list[str]:
         """Absolute directories a skill id is resolved under, in priority order.
 
-        With SKILLHUB_LIBRARY_SUBDIRS unset the library root itself is the one
+        With SKILLMGMNT_LIBRARY_SUBDIRS unset the library root itself is the one
         base and a skill id is simply the directory's path relative to it —
         no layout convention is imposed."""
         root = self.library_root_path

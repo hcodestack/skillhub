@@ -13,11 +13,11 @@ COPY server/ server/
 RUN pip install --no-cache-dir ./server
 COPY web/dist /app/web/dist
 
-ENV SKILLHUB_HOST=0.0.0.0 \
-    SKILLHUB_PORT=8787 \
-    SKILLHUB_STATIC=/app/web/dist \
-    SKILLHUB_DB=/data/skillhub.db \
-    SKILLHUB_LIBRARY_ROOT=/library
+ENV SKILLMGMNT_HOST=0.0.0.0 \
+    SKILLMGMNT_PORT=8787 \
+    SKILLMGMNT_STATIC=/app/web/dist \
+    SKILLMGMNT_DB=/data/skillhub.db \
+    SKILLMGMNT_LIBRARY_ROOT=/library
 
 EXPOSE 8787
 VOLUME /data

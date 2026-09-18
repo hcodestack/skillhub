@@ -28,7 +28,7 @@ const STORAGE_KEY = 'skillhub-lang';
 
 const M = {
   // ── shell ──────────────────────────────────────────────────────────────
-  'app.title': ['Skillhub — local skill overview', 'Skillhub — 本地技能总揽'],
+  'app.title': ['Skillmgmnt — local skill overview', 'Skillmgmnt — 本地技能总揽'],
   'app.subtitle': [
     'Every skill you own — inventory · load topology · usage',
     '本地技能总揽 — 库存 · 载入拓扑 · 调用记录',

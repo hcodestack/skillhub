@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Skillhub server — launchd template (start at login, restart if it dies).
+  Skillmgmnt server — launchd template (start at login, restart if it dies).
   setup.sh installs this for you (the "start at login" question); to do it by
   hand, replace the four __PLACEHOLDERS__, copy to ~/Library/LaunchAgents/ and
   `launchctl load` it.
@@ -20,8 +20,8 @@
   <dict>
     <key>HOME</key><string>__HOME__</string>
     <key>PATH</key><string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    <key>SKILLHUB_LIBRARY_ROOT</key><string>__LIBRARY__</string>
-    <key>SKILLHUB_PORT</key><string>__PORT__</string>
+    <key>SKILLMGMNT_LIBRARY_ROOT</key><string>__LIBRARY__</string>
+    <key>SKILLMGMNT_PORT</key><string>__PORT__</string>
   </dict>
   <key>WorkingDirectory</key>
   <string>__REPO__/server</string>

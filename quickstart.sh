@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command local Skillhub: build (first run only), start, self-report.
+# One-command local Skillmgmnt: build (first run only), start, self-report.
 #
 #   ./quickstart.sh /path/to/your/skills-library
 #   ./quickstart.sh                # uses the bundled demo library
@@ -22,11 +22,11 @@ fi
 echo "▸ 同步 Python 依赖…"
 (cd "$DIR/server" && uv sync -q)
 
-echo "▸ 启动 Skillhub"
+echo "▸ 启动 Skillmgmnt"
 echo "  库:      $LIB"
-echo "  看板:    http://127.0.0.1:${SKILLHUB_PORT:-8787}"
-echo "  MCP:     claude mcp add skillhub -- \"$DIR/mcp/skillhub_mcp.py\" http://127.0.0.1:${SKILLHUB_PORT:-8787}"
+echo "  看板:    http://127.0.0.1:${SKILLMGMNT_PORT:-8787}"
+echo "  MCP:     claude mcp add skillhub -- \"$DIR/mcp/skillhub_mcp.py\" http://127.0.0.1:${SKILLMGMNT_PORT:-8787}"
 echo "  （本机库存与调用记录由内置自上报维护，每 15 分钟一次；首轮含历史回填）"
 echo
 cd "$DIR/server"
-exec env SKILLHUB_LIBRARY_ROOT="$LIB" uv run skillhub-server
+exec env SKILLMGMNT_LIBRARY_ROOT="$LIB" uv run skillhub-server

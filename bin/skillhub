@@ -10,7 +10,7 @@
 #   skillhub help       this help
 #
 # Config lives in ~/.skillhub/env (written by setup.sh; edit freely):
-#   SKILLHUB_REPO / SKILLHUB_LIBRARY_ROOT / SKILLHUB_PORT
+#   SKILLMGMNT_REPO / SKILLMGMNT_LIBRARY_ROOT / SKILLMGMNT_PORT
 set -u
 
 CONF="$HOME/.skillhub/env"
@@ -22,8 +22,20 @@ fail() { printf 'skillhub: %s\n' "$*" >&2; exit 1; }
 [ -f "$CONF" ] || fail "not set up yet — run setup.sh in the repo first ($CONF missing)"
 # shellcheck disable=SC1090
 . "$CONF"
-REPO="${SKILLHUB_REPO:-}"
-PORT="${SKILLHUB_PORT:-8787}"
+# The project was renamed from Skillhub. A config written before the rename
+# holds SKILLHUB_* names, so promote any of those that have no new-name
+# counterpart before anything reads them. Without this, an existing install
+# reads empty values and stops working for a purely cosmetic reason.
+# ${!prefix@} covers shell variables too, which matters because the config
+# file assigns without `export` — an `env` scan would miss every one of them.
+for _k in ${!SKILLHUB_@}; do
+  _new="SKILLMGMNT_${_k#SKILLHUB_}"
+  [ -n "${!_new:-}" ] || export "$_new=${!_k}"
+done
+unset _k _new
+
+REPO="${SKILLMGMNT_REPO:-}"
+PORT="${SKILLMGMNT_PORT:-8787}"
 [ -d "$REPO/server" ] || fail "repo not found at $REPO (edit $CONF)"
 
 # The venv created by setup means uv is a setup-time dependency only.
@@ -52,7 +64,7 @@ start_bg() {
   [ -x "$VENV_BIN" ] || command -v uv >/dev/null 2>&1 \
     || fail "no server runtime (run setup.sh again)"
   mkdir -p "$(dirname "$LOG_FILE")"
-  ( export SKILLHUB_LIBRARY_ROOT="$SKILLHUB_LIBRARY_ROOT" SKILLHUB_PORT="$PORT"
+  ( export SKILLMGMNT_LIBRARY_ROOT="$SKILLMGMNT_LIBRARY_ROOT" SKILLMGMNT_PORT="$PORT"
     cd "$REPO/server"
     if [ -x "$VENV_BIN" ]; then
       nohup "$VENV_BIN" >>"$LOG_FILE" 2>&1 &
@@ -69,7 +81,7 @@ start_bg() {
 }
 
 open_url() {
-  [ "${SKILLHUB_NO_OPEN:-}" = "1" ] && return 0
+  [ "${SKILLMGMNT_NO_OPEN:-}" = "1" ] && return 0
   command -v open >/dev/null 2>&1 && open "http://127.0.0.1:$PORT" && return
   command -v xdg-open >/dev/null 2>&1 && xdg-open "http://127.0.0.1:$PORT" && return
   printf 'dashboard: http://127.0.0.1:%s\n' "$PORT"
@@ -78,11 +90,11 @@ open_url() {
 case "${1:-start}" in
   start)
     start_bg
-    printf 'skillhub running · http://127.0.0.1:%s · library: %s\n' "$PORT" "$SKILLHUB_LIBRARY_ROOT"
+    printf 'skillhub running · http://127.0.0.1:%s · library: %s\n' "$PORT" "$SKILLMGMNT_LIBRARY_ROOT"
     open_url
     ;;
   serve)
-    export SKILLHUB_LIBRARY_ROOT="$SKILLHUB_LIBRARY_ROOT" SKILLHUB_PORT="$PORT"
+    export SKILLMGMNT_LIBRARY_ROOT="$SKILLMGMNT_LIBRARY_ROOT" SKILLMGMNT_PORT="$PORT"
     run_server
     ;;
   stop)
@@ -98,12 +110,12 @@ case "${1:-start}" in
     else
       echo "not running"
     fi
-    echo "library: $SKILLHUB_LIBRARY_ROOT"
+    echo "library: $SKILLMGMNT_LIBRARY_ROOT"
     echo "repo:    $REPO"
     ;;
   path)
     echo "repo:    $REPO"
-    echo "library: $SKILLHUB_LIBRARY_ROOT"
+    echo "library: $SKILLMGMNT_LIBRARY_ROOT"
     echo "config:  $CONF"
     echo "log:     $LOG_FILE"
     ;;

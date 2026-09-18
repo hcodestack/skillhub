@@ -108,7 +108,7 @@ export default function App() {
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Skillhub</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Skillmgmnt</h1>
           <p className="text-sm text-foreground/60">{t('app.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

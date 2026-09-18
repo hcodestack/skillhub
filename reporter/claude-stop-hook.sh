@@ -5,5 +5,5 @@
 #     "command": "<repo>/reporter/claude-stop-hook.sh" } ] } ] }
 DIR="$(cd "$(dirname "$0")" && pwd)"
 nohup /usr/bin/python3 "$DIR/skillhub_report.py" \
-  --server "${SKILLHUB_SERVER:-http://127.0.0.1:8787}" >/dev/null 2>&1 &
+  --server "${SKILLMGMNT_SERVER:-http://127.0.0.1:8787}" >/dev/null 2>&1 &
 exit 0

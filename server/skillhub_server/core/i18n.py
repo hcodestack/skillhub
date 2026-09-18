@@ -113,9 +113,9 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "he.unindexed.hint": (
         "These directories hold a SKILL.md but are not in the configured index file — "
         "usually the index generator does not scan deep enough. Fix the generator, or "
-        "switch to the hub's built-in scan (leave SKILLHUB_LIBRARY_INDEX unset).",
+        "switch to the hub's built-in scan (leave SKILLMGMNT_LIBRARY_INDEX unset).",
         "这些目录含 SKILL.md 却不在配置的索引文件里——通常是索引生成器的扫描深度不够。"
-        "修索引工具，或改用 Hub 内置扫描（不设 SKILLHUB_LIBRARY_INDEX 即可）。",
+        "修索引工具，或改用 Hub 内置扫描（不设 SKILLMGMNT_LIBRARY_INDEX 即可）。",
     ),
     "he.thin.title": ("Descriptions too short to trigger reliably", "描述过短的技能（触发效果差）"),
     "he.thin.hint": (
@@ -289,7 +289,7 @@ MESSAGES: dict[str, tuple[str, str]] = {
     ),
 
     # ── governance report ──────────────────────────────────────────────────
-    "rep.title": ("# Skillhub governance report\n", "# Skillhub 治理报告\n"),
+    "rep.title": ("# Skillmgmnt governance report\n", "# Skillmgmnt 治理报告\n"),
     "rep.generated": ("> Generated {at} · hosts: {hosts}\n", "> 生成于 {at} · 主机：{hosts}\n"),
     "rep.intro": (
         "> This report can be handed straight to Claude Code / Codex: paste the file, "
@@ -364,8 +364,8 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "rep.safety.line": ("- {id} — hits: {n}", "- {id}（命中 {n} 条）"),
 
     # ── remediation script ─────────────────────────────────────────────────
-    "sh.title": ("# Skillhub broken-link cleanup · generated {at}",
-                 "# Skillhub 断链清理脚本 · 生成于 {at}"),
+    "sh.title": ("# Skillmgmnt broken-link cleanup · generated {at}",
+                 "# Skillmgmnt 断链清理脚本 · 生成于 {at}"),
     "sh.hosts": ("# For hosts: {hosts} — run it on that machine",
                  "# 针对主机：{hosts} —— 在那台机器上运行"),
     "sh.none": ("(none)", "(无)"),
@@ -406,10 +406,10 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "# ───── 第 3 部分：散落实体 → 软链（需先确认副本无本地改动！默认注释）─────",
     ),
     "sh.trashNote": (
-        "# Copies are MOVED to $TRASH (override with SKILLHUB_TRASH=...), never "
+        "# Copies are MOVED to $TRASH (override with SKILLMGMNT_TRASH=...), never "
         "deleted — undo is `mv` back. Delete the trash directory yourself once you "
         "are sure.",
-        "# 副本只 MOVE 到 $TRASH（可用 SKILLHUB_TRASH=... 覆盖），绝不删除——"
+        "# 副本只 MOVE 到 $TRASH（可用 SKILLMGMNT_TRASH=... 覆盖），绝不删除——"
         "撤回就是 mv 回去。确认无误后再自行删掉回收目录。",
     ),
 }

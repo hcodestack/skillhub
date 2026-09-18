@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Skillhub — update to the latest version.
+# Skillmgmnt — update to the latest version.
 #   ./update.sh            pull + rebuild web if it changed
 #   ./update.sh --check    show whether an update is available, change nothing
 # User data is never touched: the database lives outside the repo (or under

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Skillhub reporter as a macOS LaunchAgent (runs every 15 min).
+# Install the Skillmgmnt reporter as a macOS LaunchAgent (runs every 15 min).
 #   ./install-launchd.sh [server-url]     default: http://127.0.0.1:8787
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -75,7 +75,7 @@ def build_plan(lang: str = "en") -> dict:
             "FROM installs WHERE active=1 AND link_type='entity' "
             "AND vcs!='vendored' ORDER BY host,agent,entry_name").fetchall():
         if (r["agent"], r["entry_name"]) in settings.entity_whitelist():
-            continue          # sanctioned entities (SKILLHUB_ENTITY_WHITELIST)
+            continue          # sanctioned entities (SKILLMGMNT_ENTITY_WHITELIST)
         lib = _library_display_dir(r["skill_id"]) if r["skill_id"] else ""
         loose.append({
             "host": r["host"], "agent": r["agent"], "scope": r["scope"],
@@ -213,7 +213,7 @@ def remediation_sh(lang: str = "en") -> str:
     w(_("sh.explain3"))
     w("set -u")
     w('removed=0; skipped=0')
-    w('TRASH="${SKILLHUB_TRASH:-$HOME/.local/state/skillhub/trash-$(date +%Y%m%d)}"')
+    w('TRASH="${SKILLMGMNT_TRASH:-$HOME/.local/state/skillhub/trash-$(date +%Y%m%d)}"')
     w("")
     w(_("sh.part1", n=p["totals"]["broken"]))
     for b in p["broken"]:

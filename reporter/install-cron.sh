@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the Skillhub reporter as a cron job (Linux; macOS users can use
+# Install the Skillmgmnt reporter as a cron job (Linux; macOS users can use
 # install-launchd.sh instead).
 #   ./install-cron.sh [server-url]     default: http://127.0.0.1:8787
 set -euo pipefail

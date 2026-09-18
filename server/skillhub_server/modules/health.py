@@ -13,7 +13,7 @@ from ..core.jobs import last_runs
 router = APIRouter(prefix="/health", tags=["health"])
 
 # Sanctioned entries that are legitimately entities in entry dirs — configure
-# via SKILLHUB_ENTITY_WHITELIST="agent:entry,agent:entry".
+# via SKILLMGMNT_ENTITY_WHITELIST="agent:entry,agent:entry".
 def WHITELIST():
     return settings.entity_whitelist()
 

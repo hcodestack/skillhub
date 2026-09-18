@@ -1,4 +1,4 @@
-"""Skillhub server entrypoint."""
+"""Skillmgmnt server entrypoint."""
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -82,6 +82,13 @@ def _vet_skills_bg() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # the project was renamed; anyone still on the old prefix keeps working but
+    # should hear about it once rather than discover it when support is dropped
+    from .core.config import legacy_env_in_use
+    legacy = legacy_env_in_use()
+    if legacy:
+        print(f"[skillmgmnt] using deprecated {', '.join(legacy)} — "
+              f"rename to SKILLMGMNT_* when convenient")
     get_conn()
     result = sync_library()
     if not result.get("ok"):
@@ -95,7 +102,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Skillhub", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Skillmgmnt", version="0.1.0", lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

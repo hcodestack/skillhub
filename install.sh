@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Skillhub — one-line install entry:
+# Skillmgmnt — one-line install entry:
 #   curl -fsSL https://raw.githubusercontent.com/hcodestack/skillhub/main/install.sh | bash
 # Clones the repo (if needed) and hands off to the interactive setup wizard.
 set -e
 
-REPO_URL="https://github.com/hcodestack/skillhub.git"
+REPO_URL="https://github.com/hcodestack/skillmgmnt.git"
 DEST="${1:-$HOME/skillhub}"
 
 if [ -f "./setup.sh" ] && [ -d "./server" ]; then
@@ -14,7 +14,7 @@ else
   if [ -d "$DEST/server" ]; then
     echo "Existing install found at $DEST"
   else
-    echo "Cloning Skillhub to $DEST ..."
+    echo "Cloning Skillmgmnt to $DEST ..."
     git clone --depth 1 "$REPO_URL" "$DEST"
   fi
   cd "$DEST"

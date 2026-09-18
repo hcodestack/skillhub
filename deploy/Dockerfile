@@ -12,16 +12,16 @@ COPY server/ server/
 RUN pip install --no-cache-dir ./server
 COPY --from=webbuild /app/web/dist /app/web/dist
 
-ENV SKILLHUB_HOST=0.0.0.0 \
-    SKILLHUB_PORT=8787 \
-    SKILLHUB_STATIC=/app/web/dist \
-    SKILLHUB_DB=/data/skillhub.db \
-    SKILLHUB_LIBRARY_ROOT=/library
-# Deliberately no SKILLHUB_LIBRARY_INDEX: unset means the hub scans /library
+ENV SKILLMGMNT_HOST=0.0.0.0 \
+    SKILLMGMNT_PORT=8787 \
+    SKILLMGMNT_STATIC=/app/web/dist \
+    SKILLMGMNT_DB=/data/skillhub.db \
+    SKILLMGMNT_LIBRARY_ROOT=/library
+# Deliberately no SKILLMGMNT_LIBRARY_INDEX: unset means the hub scans /library
 # for SKILL.md itself, which is the mode that works without any extra tooling.
 # Setting it here forced index mode on every container, so a user who mounted a
 # plain skills library got "index not readable" and an empty catalog. Point
-# SKILLHUB_LIBRARY_INDEX at a file only if something already maintains one.
+# SKILLMGMNT_LIBRARY_INDEX at a file only if something already maintains one.
 
 EXPOSE 8787
 VOLUME /data

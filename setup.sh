@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Skillhub setup — guided install for the single-machine (local) mode.
+# Skillmgmnt setup — guided install for the single-machine (local) mode.
 #
 #   ./setup.sh                     interactive wizard (default)
 #   ./setup.sh --non-interactive --library /path/to/skills-library [...]
@@ -65,7 +65,7 @@ if [ -f "$ENV_FILE" ] && [ "$FORCE" -eq 0 ] && [ "$NON_INTERACTIVE" -eq 1 ]; the
 fi
 
 say ""
-say "  ${BOLD}Skillhub${NC} ${DIM}$(t "— setup" "— 安装向导")${NC}"
+say "  ${BOLD}Skillmgmnt${NC} ${DIM}$(t "— setup" "— 安装向导")${NC}"
 say "  ${DIM}──────────────────────────────────────────────${NC}"
 
 # ── [1/5] prerequisites ─────────────────────────────────────────────────────
@@ -99,8 +99,8 @@ fi
 # ── [2/5] detect this machine's AI tools (our own 47-entry table) ───────────
 say ""
 say "  ${DIM}[2/5]${NC} ${CYAN}$(t "AI tools on this machine" "本机的 AI 工具")${NC}"
-say "  ${DIM}$(t "Skillhub will watch skills across all of these:" \
-                 "Skillhub 将观测以下工具的技能目录：")${NC}"
+say "  ${DIM}$(t "Skillmgmnt will watch skills across all of these:" \
+                 "Skillmgmnt 将观测以下工具的技能目录：")${NC}"
 DETECTED="$(cd "$DIR/reporter" && "$PY" -c '
 import sys; sys.path.insert(0, ".")
 from adapters.tools import installed_tools
@@ -159,10 +159,10 @@ fi
 
 mkdir -p "$CONF_DIR"
 cat > "$ENV_FILE" <<EOF
-# Skillhub local config — sourced by bin/skillhub and launchd. Edit freely.
-SKILLHUB_REPO="$DIR"
-SKILLHUB_LIBRARY_ROOT="$LIB"
-SKILLHUB_PORT=$PORT
+# Skillmgmnt local config — sourced by bin/skillhub and launchd. Edit freely.
+SKILLMGMNT_REPO="$DIR"
+SKILLMGMNT_LIBRARY_ROOT="$LIB"
+SKILLMGMNT_PORT=$PORT
 EOF
 ok "$(t "config written:" "配置已写入：") ${DIM}$ENV_FILE${NC}"
 
@@ -186,8 +186,8 @@ esac
 
 # optional: start at login (macOS launchd)
 if [ "$NON_INTERACTIVE" -eq 0 ] && [ "$(uname)" = "Darwin" ]; then
-  printf "  $(t "Start Skillhub automatically at login? [y/N] " \
-                "开机自动启动 Skillhub？[y/N] ")"
+  printf "  $(t "Start Skillmgmnt automatically at login? [y/N] " \
+                "开机自动启动 Skillmgmnt？[y/N] ")"
   read -r yn </dev/tty || yn=""
   case "$yn" in y|Y) AUTOSTART=1 ;; esac
 fi
@@ -220,8 +220,8 @@ case "$CONNECT_MCP" in
   *) die "--connect-mcp must be auto | claude | none" ;;
 esac
 if [ "$NON_INTERACTIVE" -eq 0 ] && [ "$HAS_CLAUDE" -eq 1 ] && [ "$CONNECT_MCP" = "auto" ]; then
-  printf "  $(t "Claude Code detected — register Skillhub as one of its tools? [Y/n] " \
-                "检测到 Claude Code——把 Skillhub 注册为它的工具？[Y/n] ")"
+  printf "  $(t "Claude Code detected — register Skillmgmnt as one of its tools? [Y/n] " \
+                "检测到 Claude Code——把 Skillmgmnt 注册为它的工具？[Y/n] ")"
   read -r yn </dev/tty || yn=""
   case "$yn" in n|N) DO_CLAUDE=0 ;; *) DO_CLAUDE=1 ;; esac
 fi

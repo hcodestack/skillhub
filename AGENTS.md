@@ -1,12 +1,12 @@
-# Skillhub — Agent Runbook
+# Skillmgmnt — Agent Runbook
 
 You are an AI coding agent (Claude Code, Codex, or similar) and a user has
-asked you to install, operate, or troubleshoot Skillhub for them. This file is
+asked you to install, operate, or troubleshoot Skillmgmnt for them. This file is
 written for you. Converse with the user in **their** language; run the
 commands exactly as given. Prefer the non-interactive paths below over the
 interactive wizard — you are the wizard.
 
-Skillhub is a read-only dashboard of the AI-agent skills on this machine:
+Skillmgmnt is a read-only dashboard of the AI-agent skills on this machine:
 what exists in the user's skills library, which of 47+ tools load each skill,
 what gets used, and what is broken. Nothing here modifies the user's skills.
 
@@ -14,11 +14,11 @@ what gets used, and what is broken. Nothing here modifies the user's skills.
 
 ### 0. Where am I?
 
-If you are not already inside a Skillhub checkout (`setup.sh` and `server/`
+If you are not already inside a Skillmgmnt checkout (`setup.sh` and `server/`
 present), clone first — ask the user where, defaulting to `~/skillhub`:
 
 ```bash
-git clone https://github.com/hcodestack/skillhub.git ~/skillhub && cd ~/skillhub
+git clone https://github.com/hcodestack/skillmgmnt.git ~/skillhub && cd ~/skillhub
 ```
 
 ### 1. Preflight — check, don't assume
@@ -73,7 +73,7 @@ has its own `EN | 中文` switch in the header, so this flag is only about the
 installer's output).
 
 `--connect-mcp auto` registers the hub as an MCP tool in Claude Code when the
-`claude` CLI is present — that MCP server is how **you** will query Skillhub
+`claude` CLI is present — that MCP server is how **you** will query Skillmgmnt
 afterwards, so keep it unless the user objects. If you are Codex, also append
 to `~/.codex/config.toml` (with the user's consent), substituting the real
 checkout path:
@@ -88,7 +88,7 @@ args = ["http://127.0.0.1:8787"]
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-SKILLHUB_NO_OPEN=1 skillhub          # start in background, skip browser
+SKILLMGMNT_NO_OPEN=1 skillhub          # start in background, skip browser
 skillhub status                       # expect: running (pid …)
 curl -s http://127.0.0.1:8787/api/v1/library/status   # expect: {"count": N>0, …}
 curl -s http://127.0.0.1:8787/api/v1/stats/tiles      # expect JSON tiles
@@ -150,9 +150,9 @@ claude mcp remove skillhub 2>/dev/null
 
 ## Boundaries
 
-- Skillhub is read-only over the user's skills; keep it that way. The one
+- Skillmgmnt is read-only over the user's skills; keep it that way. The one
   hub-side write is the dashboard's own git fast-forward button.
 - Don't install system packages, edit shell profiles beyond what setup.sh
   itself does, or bind the server to non-localhost without the user asking.
 - The hub has no authentication — if the user wants LAN access
-  (`SKILLHUB_HOST=0.0.0.0`), say that out loud before enabling it.
+  (`SKILLMGMNT_HOST=0.0.0.0`), say that out loud before enabling it.

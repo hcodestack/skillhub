@@ -2,7 +2,7 @@
 
 Skills copied out of a bigger upstream repository carry no origin of their
 own, so upstream-movement checks need a mapping you provide. Point
-SKILLHUB_PROVENANCE_FILE at a JSON object:
+SKILLMGMNT_PROVENANCE_FILE at a JSON object:
 
     {
       "some-family": {
