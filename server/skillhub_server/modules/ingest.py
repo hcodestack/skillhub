@@ -42,6 +42,16 @@ class UsageItem(BaseModel):
     extra: str = ""
 
 
+class McpServerItem(BaseModel):
+    agent: str
+    scope: str = "global"
+    project_path: str = ""
+    name: str
+    transport: str = "http"        # http | sse | stdio
+    endpoint: str                  # query/fragment already stripped by the reporter
+    has_auth: bool = False         # whether the config carries credentials, never which
+
+
 class Report(BaseModel):
     host: str
     os: str = ""
@@ -50,6 +60,9 @@ class Report(BaseModel):
     events: list[UsageItem] = Field(default_factory=list)
     # agents whose inventory in this payload is a COMPLETE snapshot for the host
     snapshot_agents: list[str] = Field(default_factory=list)
+    # MCP servers this host's tools are configured to reach. A non-empty list
+    # is a complete snapshot for the host, so removed servers retire.
+    mcp_servers: list[McpServerItem] = Field(default_factory=list)
 
 
 @router.post("/report")
@@ -110,6 +123,29 @@ def report(r: Report):
                 if (row["scope"], row["project_path"], row["entry_name"]) not in seen:
                     conn.execute("UPDATE installs SET active=0, last_seen=? WHERE id=?",
                                  (now, row["id"]))
+
+        if r.mcp_servers:
+            for m in r.mcp_servers:
+                conn.execute(
+                    "INSERT INTO mcp_declarations(host,agent,scope,project_path,name,"
+                    "endpoint,transport,has_auth,last_seen,active) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,1) "
+                    "ON CONFLICT(host,agent,scope,project_path,name) DO UPDATE SET "
+                    "endpoint=excluded.endpoint, transport=excluded.transport, "
+                    "has_auth=excluded.has_auth, last_seen=excluded.last_seen, active=1",
+                    (r.host, m.agent, m.scope, m.project_path, m.name, m.endpoint,
+                     m.transport, 1 if m.has_auth else 0, now))
+                conn.execute(
+                    "INSERT OR IGNORE INTO mcp_endpoints(endpoint,transport,state) "
+                    "VALUES(?,?,'')", (m.endpoint, m.transport))
+            seen_mcp = {(m.agent, m.scope, m.project_path, m.name) for m in r.mcp_servers}
+            for row in conn.execute(
+                    "SELECT rowid,agent,scope,project_path,name FROM mcp_declarations "
+                    "WHERE host=? AND active=1", (r.host,)).fetchall():
+                if (row["agent"], row["scope"], row["project_path"],
+                        row["name"]) not in seen_mcp:
+                    conn.execute("UPDATE mcp_declarations SET active=0 WHERE rowid=?",
+                                 (row["rowid"],))
 
         for e in r.events:
             h = e.hash or hashlib.sha1(

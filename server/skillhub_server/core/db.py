@@ -94,6 +94,61 @@ CREATE TABLE IF NOT EXISTS skill_vetting(
   scanned_at    INTEGER DEFAULT 0
 );
 
+-- MCP servers, and the skills they serve (SEP-2640).
+--
+-- Skills served over MCP never land in a tool's skills directory: the
+-- extension requires hosts to cache them outside every discovery path. They
+-- are therefore not installs and do not belong in `installs`. What is worth
+-- recording is a different shape — an endpoint that serves them, the tools
+-- pointed at it, and what it currently offers.
+CREATE TABLE IF NOT EXISTS mcp_endpoints(
+  endpoint       TEXT PRIMARY KEY,   -- https://host/path, or stdio:<program>
+  transport      TEXT DEFAULT '',    -- http | sse | stdio
+  server_name    TEXT DEFAULT '',    -- serverInfo.name, self-reported
+  server_title   TEXT DEFAULT '',
+  server_version TEXT DEFAULT '',
+  protocol       TEXT DEFAULT '',    -- negotiated protocol version
+  skills_ext     INTEGER DEFAULT 0,  -- declares io.modelcontextprotocol/skills
+  directory_read INTEGER DEFAULT 0,
+  state          TEXT DEFAULT '',    -- served|empty|no-extension|auth|unreachable|declared
+  detail         TEXT DEFAULT '',    -- one line; why, for states that need it
+  skills_count   INTEGER DEFAULT 0,
+  meta_tokens    INTEGER DEFAULT 0,  -- resident cost if a host lists them all
+  probed_at      INTEGER DEFAULT 0
+);
+
+-- Which tool on which host points at which endpoint. Credentials are never
+-- stored: `has_auth` is the whole of what the reporter may say about them.
+CREATE TABLE IF NOT EXISTS mcp_declarations(
+  host         TEXT NOT NULL,
+  agent        TEXT NOT NULL,
+  scope        TEXT NOT NULL,        -- global | project
+  project_path TEXT NOT NULL DEFAULT '',
+  name         TEXT NOT NULL,        -- the name the config gives it
+  endpoint     TEXT NOT NULL,
+  transport    TEXT DEFAULT '',
+  has_auth     INTEGER DEFAULT 0,
+  last_seen    TEXT DEFAULT '',
+  active       INTEGER DEFAULT 1,
+  UNIQUE(host, agent, scope, project_path, name)
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_decl_ep ON mcp_declarations(endpoint);
+
+CREATE TABLE IF NOT EXISTS mcp_skills(
+  endpoint    TEXT NOT NULL,
+  uri         TEXT NOT NULL,
+  name        TEXT DEFAULT '',
+  description TEXT DEFAULT '',
+  frontmatter TEXT DEFAULT '{}',
+  files       INTEGER DEFAULT 0,     -- -1 = resources is "dynamic"
+  bytes       INTEGER DEFAULT 0,
+  verifiable  TEXT DEFAULT '',       -- full | partial | dynamic
+  digest      TEXT DEFAULT '',       -- SKILL.md digest, when the entry carries one
+  seen_at     INTEGER DEFAULT 0,
+  UNIQUE(endpoint, uri)
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_skills_name ON mcp_skills(name);
+
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT);
 
 -- Last run of each background job. Keyed by job name because only the most

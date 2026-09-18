@@ -4,6 +4,7 @@ import { agentLabel, fmtRel, useApi, type HealthSection } from '../lib/api';
 import { LinkDocToggle } from '../lib/linkDoc';
 import { AgentChip } from '../components/AgentChips';
 import { t, useLang, useT, type MsgKey } from '../lib/i18n';
+import { McpStateChip } from '../lib/mcpDoc';
 
 const SEV_CLASS: Record<string, string> = {
   error: 'bg-red-500/15 text-red-700 dark:text-red-300',
@@ -107,6 +108,57 @@ function Items({ section }: { section: HealthSection }) {
               <span className="tabular-nums text-foreground/60">
                 {t('he.item.lines', { n: String(it.lines) })}
               </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  // MCP findings name a skill and the server it came from, or an endpoint and
+  // why the probe stopped. Neither fits the install-shaped default renderer.
+  if (section.key === 'mcp_unreachable') {
+    return (
+      <ul className="flex flex-col gap-2">
+        {items.map((it, i) => (
+          <li key={i} className="border-t border-foreground/5 pt-2 text-sm first:border-0">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <McpStateChip state={String(it.state)} />
+              <span className="break-all font-mono text-xs">{String(it.endpoint)}</span>
+              <span className="text-xs text-foreground/60">
+                {String(it.agents ?? '').split(',').filter(Boolean).map(agentLabel).join(' · ')}
+              </span>
+            </div>
+            {it.detail ? (
+              <div className="mt-0.5 text-xs leading-relaxed text-foreground/60">
+                {String(it.detail)}
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (section.key.startsWith('mcp_')) {
+    return (
+      <ul className="flex flex-col gap-1.5">
+        {items.map((it, i) => (
+          <li key={i} className="flex flex-wrap items-baseline gap-2 text-sm">
+            <span className="font-medium">{String(it.id)}</span>
+            <span className="text-xs text-foreground/60">{String(it.where ?? '')}</span>
+            {it.reason != null && (
+              <Chip size="sm" className="bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                {t(`mcp.verifiable.${it.reason}` as MsgKey)}
+              </Chip>
+            )}
+            {it.files != null && (
+              <span className="tabular-nums text-xs text-foreground/60">
+                {t('mcp.files', { n: String(it.files) })}
+              </span>
+            )}
+            {it.excerpt != null && (
+              <code className="rounded bg-foreground/5 px-1.5 py-0.5 text-xs">
+                {String(it.excerpt)}
+              </code>
             )}
           </li>
         ))}

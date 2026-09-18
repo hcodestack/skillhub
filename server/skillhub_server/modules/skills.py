@@ -116,7 +116,17 @@ def list_skills(lang: str = "en"):
         it["update"] = srcs.get(k)   # None = origin unknown, cannot be checked
         it["vetting"] = vets.get(k)  # None = clean or not yet scanned
         # path as the user sees it, so the UI can build a runnable command
-        it["library_path"] = f"{disp}/Organized/{it['id']}" if it["in_library"] else ""
+        # Resolve through the configured bases rather than assuming a folder
+        # name, then rewrite to the path the user's own machine sees, so the
+        # copy button and the evaluation prompt produce something runnable.
+        it["library_path"] = ""
+        if it["in_library"]:
+            d = settings.skill_dir(it["id"])
+            root = settings.library_root_path
+            if d and disp and root and d.startswith(root):
+                it["library_path"] = disp + d[len(root):]
+            elif d:
+                it["library_path"] = d
 
     ordered = sorted(items.values(),
                      key=lambda x: (-x["usage"]["total"], x["name"].lower()))

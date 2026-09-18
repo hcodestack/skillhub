@@ -27,6 +27,11 @@ MESSAGES: dict[str, tuple[str, str]] = {
     "job.library_sync": ("Library index sync", "库索引同步"),
     "job.upstream_check": ("Upstream update check", "上游更新检查"),
     "job.vetting_scan": ("Safety review scan", "安全审查扫描"),
+    "job.mcp_probe": ("MCP server probe", "MCP 服务器探测"),
+    "job.detail.mcp": (
+        "{probed} probed / {served} serving skills / {skills} skills",
+        "{probed} 探测 / {served} 在服务技能 / {skills} 个技能",
+    ),
     "job.self_report": ("Built-in self-report", "本机自动上报"),
     "job.detail.synced": ("{n} skills indexed", "{n} 个技能入库"),
     "job.detail.upstream": (
@@ -138,6 +143,66 @@ MESSAGES: dict[str, tuple[str, str]] = {
         "技能是别人写的、由你的 agent 以你的权限运行的代码。"
         "这些是确定性规则命中的高危项（凭据/隐私、外发、执行提权），"
         "是信号不是判决——联网技能里出现 curl 本就正常，但值得你亲眼看一眼。",
+    ),
+    # ── MCP-served skills ───────────────────────────────────────────────────
+    "he.mcpCollide.title": ("MCP skill names that collide with a local skill",
+                            "与本地技能重名的 MCP 技能"),
+    "he.mcpCollide.hint": (
+        "A skill name is not unique across origins. The extension makes this an "
+        "impersonation surface and requires hosts to resolve names per origin and "
+        "never let an MCP skill silently shadow a local one. These are the pairs "
+        "where that matters on this machine. Check that the server is the one you "
+        "think it is.",
+        "技能名在不同来源之间不唯一。规范把这列为冒名风险，要求宿主按来源分命名空间、"
+        "并且不得让 MCP 技能悄悄顶替本地同名技能。这里列出本机上真的撞名的几对，"
+        "请确认那台服务器确实是你以为的那台。",
+    ),
+    "he.mcpUnverified.title": ("MCP skills that cannot be content-bound",
+                               "无法做内容绑定的 MCP 技能"),
+    "he.mcpUnverified.hint": (
+        "Approval is supposed to bind to a complete file list with a digest and a "
+        "size for each file, so that a server changing anything revokes it. These "
+        "entries do not carry that: either the listing is dynamic, or files are "
+        "missing a digest or size. A host may still load them, but it cannot tell "
+        "you afterwards that the content is what you approved.",
+        "审批本应绑定到一份完整文件清单，每个文件带摘要和字节数，"
+        "服务端改动任何一处审批就作废。这些条目没有这个：要么整份是 dynamic，"
+        "要么有文件缺摘要或缺 size。宿主仍可能加载它们，"
+        "但事后无法向你保证内容就是你批准过的那份。",
+    ),
+    "he.mcpOversized.title": ("MCP skills over the protocol's per-skill limits",
+                              "超出协议单技能上限的 MCP 技能"),
+    "he.mcpOversized.hint": (
+        "The extension fixes two per-skill limits, 512 files and 16 MiB, so that "
+        "servers know what every conforming host accepts. A skill over either is "
+        "not guaranteed to load anywhere, and a host that declines it may do so "
+        "without saying why.",
+        "规范给单个技能定死两个上限：512 个文件、16 MiB，"
+        "好让服务端知道任何合规宿主都吃得下什么。超出任一条的技能不保证在任何地方能加载，"
+        "而拒绝它的宿主未必会说明原因。",
+    ),
+    "he.mcpElevated.title": ("MCP skills whose frontmatter asks for wider permissions",
+                             "在 frontmatter 里要权限的 MCP 技能"),
+    "he.mcpElevated.hint": (
+        "A remote server writing allowed-tools is requesting elevated access on "
+        "your machine, not describing its own. Hosts must ignore the field for "
+        "MCP-origin skills unless you approve that grant for that skill. Worth "
+        "reading before you do.",
+        "远程服务端写 allowed-tools 是在向你的机器要权限，不是在描述它自己。"
+        "对 MCP 来源的技能，宿主必须忽略这个字段，除非你为那个技能明确批准。"
+        "批准之前值得先看一眼它想要什么。",
+    ),
+    "he.mcpUnreachable.title": ("MCP servers configured but not reachable",
+                                "已配置但连不上的 MCP 服务器"),
+    "he.mcpUnreachable.hint": (
+        "A tool on this machine points at these, and the probe could not complete. "
+        "Servers needing authentication are expected here and are left alone on "
+        "purpose: the dashboard never reads the credentials in your MCP config. "
+        "stdio servers are listed as declared because starting one would mean "
+        "running a command, which this dashboard does not do.",
+        "本机有工具指向它们，而探测没能完成。需要认证的服务器出现在这里是正常的，"
+        "而且是刻意不碰的：看板从不读你 MCP 配置里的凭据。"
+        "stdio 服务器记为「已声明」，因为启动它等于在你机器上跑命令，本看板不做这件事。",
     ),
     "he.idle.title": ("In the library, never invoked and not currently loaded",
                       "库内技能：无调用记录且当前未载入"),

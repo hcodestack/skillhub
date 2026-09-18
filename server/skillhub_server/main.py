@@ -60,6 +60,16 @@ def _self_report_loop() -> None:
         _t.sleep(SELF_REPORT_INTERVAL)
 
 
+def _probe_mcp_bg() -> None:
+    """Enumerating a server's skills is a network call, so it runs here rather
+    than on the startup path. Nothing is fetched beyond the listing."""
+    try:
+        from .modules.mcp import refresh as refresh_mcp
+        print(f"[skillhub] mcp probe: {refresh_mcp(force=False)}")
+    except Exception as e:
+        print(f"[skillhub] mcp probe failed: {e}")
+
+
 def _vet_skills_bg() -> None:
     """Reading every file of every skill is far too slow for a request, so the
     safety review runs here and serves cached results."""
@@ -78,6 +88,7 @@ async def lifespan(app: FastAPI):
         print(f"[skillhub] library sync skipped: {result.get('error')}")
     threading.Thread(target=_check_upstreams_bg, daemon=True).start()
     threading.Thread(target=_vet_skills_bg, daemon=True).start()
+    threading.Thread(target=_probe_mcp_bg, daemon=True).start()
     if settings.self_report_enabled():
         threading.Thread(target=_self_report_loop, daemon=True).start()
     yield

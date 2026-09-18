@@ -454,6 +454,110 @@ const M = {
   'ho.project': ['Project', '项目'],
   'ho.sharedBy': ['shared by {list}', '{list} 共用'],
   'ho.undetected': ['{n} tools not detected on this host', '{n} 个工具在本机未检测到'],
+  // ── MCP-served skills ──────────────────────────────────────────────────
+  'nav.mcp': ['MCP', 'MCP'],
+  'mcp.title': ['Skills served over MCP', 'MCP 提供的技能'],
+  'mcp.lede': [
+    'A skill served over MCP is never installed. The extension requires hosts to '
+    + 'cache what they fetch outside every skill-discovery path, so nothing lands in '
+    + 'a tool\u2019s skills directory and a filesystem scan cannot see it. What can be '
+    + 'seen is the server, so that is what this page reads.',
+    'MCP 提供的技能不会被「装」到任何地方。规范要求宿主把取到的内容缓存在所有技能发现路径'
+    + '之外，所以工具的 skills 目录里什么都不会出现，扫文件系统看不到它们。'
+    + '能看到的是服务器，所以这一页读的是服务器。',
+  ],
+  'mcp.tile.servers': ['Servers configured', '已配置服务器'],
+  'mcp.tile.serving': ['Serving skills', '在提供技能'],
+  'mcp.tile.skills': ['Skills reachable', '可达技能'],
+  'mcp.tile.tokens': ['Resident tokens if listed', '全部列出的常驻 tokens'],
+  'mcp.tile.tokens.title': [
+    'What a host would carry in every turn\u2019s context if it put all reachable skill '
+    + 'names and descriptions there. Compare it against the resident cost of your '
+    + 'loaded local skills on the overview.',
+    '如果宿主把全部可达技能的名称和描述都放进上下文，每一轮要扛的量。'
+    + '可以和总览里本地已载入技能的常驻成本对比着看。',
+  ],
+  'mcp.tile.unprobed': ['Not probed', '未探测'],
+  'mcp.declaredBy': ['Declared by', '声明它的'],
+  'mcp.protocol': ['Protocol', '协议'],
+  'mcp.needsAuth': ['config carries credentials', '配置里带凭据'],
+  'mcp.dirRead': ['directory read', '支持目录读'],
+  'mcp.skills.n': ['{n} skills', '{n} 个技能'],
+  'mcp.skills.show': ['Show skills', '展开技能'],
+  'mcp.files': ['{n} files', '{n} 个文件'],
+  'mcp.dynamic': ['dynamic', '动态生成'],
+  'mcp.verifiable.full': ['verifiable', '可校验'],
+  'mcp.verifiable.partial': ['partly verifiable', '部分可校验'],
+  'mcp.verifiable.dynamic': ['not verifiable', '不可校验'],
+  'mcp.verifiable.partial.title': [
+    'Entries are missing a digest or a size, so a host cannot bind your approval to '
+    + 'the exact content it later reads.',
+    '条目缺摘要或缺 size，宿主无法把你的批准绑定到它之后真正读到的内容。',
+  ],
+  'mcp.verifiable.dynamic.title': [
+    'The server publishes no stable digests for this skill. It cannot be '
+    + 'content-bound, and some hosts will decline to load it.',
+    '服务端没有为这个技能发布稳定摘要。它无法做内容绑定，有些宿主会直接拒绝加载。',
+  ],
+  'mcp.none': ['No MCP server is configured on any reporting host.',
+               '还没有任何上报主机配置过 MCP 服务器。'],
+  'mcp.reprobe': ['Re-probe servers', '重新探测'],
+  'mcp.reprobing': ['Probing\u2026', '探测中\u2026'],
+  'mcp.probeFailed': ['Probe failed ({err}); the list below is the previous result',
+                      '探测失败（{err}）；下方仍为上次结果'],
+  'mcp.lastProbe': ['probed {when}', '探测于 {when}'],
+
+  'mcp.verdict.ok': ['Nothing to do', '无需处理'],
+  'mcp.verdict.attention': ['Worth a look', '值得看一眼'],
+  'mcp.verdict.info': ['For information', '仅供参考'],
+  'mcp.verdict.refused': ['Deliberately not probed', '刻意不探测'],
+
+  'mcp.state.served': ['Serving', '在提供'],
+  'mcp.state.served.what': [
+    'The server declares the skills extension and enumerated what it serves. The '
+    + 'names and descriptions are what a host would put in context; nothing else is '
+    + 'fetched until a skill is actually loaded.',
+    '服务器声明了 skills 扩展，并列出了它提供的技能。名称和描述就是宿主会放进上下文的部分；'
+    + '在技能真正被加载之前，其余内容不会被取走。',
+  ],
+  'mcp.state.empty': ['Serving, not enumerable', '在提供但不可枚举'],
+  'mcp.state.empty.what': [
+    'The server declares the extension but returns no listing. That is allowed: a '
+    + 'catalog can be too large, generated on demand, or fronted by a gateway. It may '
+    + 'still serve skills by URI, so an empty list is not proof that it has none.',
+    '服务器声明了扩展但不返回列表。这是规范允许的：目录可能太大、按需生成、或者前面挡着网关。'
+    + '它仍可能按 URI 提供技能，所以空列表不等于它没有技能。',
+  ],
+  'mcp.state.no-extension': ['No skills extension', '未声明 skills 扩展'],
+  'mcp.state.no-extension.what': [
+    'Reachable, and it answers as an MCP server, but it does not declare the skills '
+    + 'extension. It serves tools or resources only. Nothing to do.',
+    '能连上，也确实是个 MCP 服务器，但没有声明 skills 扩展。它只提供 tools 或 resources。无需处理。',
+  ],
+  'mcp.state.auth': ['Needs authentication', '需要认证'],
+  'mcp.state.auth.what': [
+    'The server asked for credentials and the probe stopped there. This dashboard '
+    + 'never reads the credentials in your MCP config and never sends them, so a '
+    + 'server behind auth stays unexamined by design.',
+    '服务器要凭据，探测就到此为止。本看板从不读你 MCP 配置里的凭据、也不会发送它们，'
+    + '所以需要认证的服务器按设计就是查不了。',
+  ],
+  'mcp.state.declared': ['Declared, not started', '已声明，未启动'],
+  'mcp.state.declared.what': [
+    'A stdio server. Enumerating it would mean starting the process, and starting a '
+    + 'process is running a command on your machine, not observing it. This dashboard '
+    + 'does not do that, so the server is recorded and left alone.',
+    'stdio 服务器。要枚举它就得把进程拉起来，而拉起进程是在你机器上跑命令，不是观测。'
+    + '本看板不做这件事，所以只记下它，不碰。',
+  ],
+  'mcp.state.unreachable': ['Unreachable', '连不上'],
+  'mcp.state.unreachable.what': [
+    'A tool here points at it and the probe could not complete. A local server that '
+    + 'is simply not running looks like this, and so does a stale entry left in a '
+    + 'config after the server moved.',
+    '本机有工具指向它，而探测没能完成。本地服务器只是没在跑会是这样，'
+    + '服务器搬走之后配置里留下的旧条目也是这样。',
+  ],
   'ho.undetected.hint': [
     'Known to the reporter; no home directory found here. Install one and it appears on the next report.',
     '上报器认识这些工具，但本机没有它们的主目录；装了之后下一次上报就会出现。',

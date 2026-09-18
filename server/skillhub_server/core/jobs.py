@@ -20,6 +20,7 @@ JOBS: dict[str, str] = {
     "library_sync": "job.library_sync",
     "upstream_check": "job.upstream_check",
     "vetting_scan": "job.vetting_scan",
+    "mcp_probe": "job.mcp_probe",
 }
 
 # the built-in self-reporter joins the board only when it is actually enabled,

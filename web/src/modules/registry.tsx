@@ -5,6 +5,7 @@ import Health from './health';
 import Updates from './updates';
 import Topology from './topology';
 import Hosts from './hosts';
+import Mcp from './mcp';
 
 // Modular: adding or removing a dashboard module means editing this array only.
 // `label` is a message key, not display text — the tab strip is rendered by
@@ -14,5 +15,6 @@ export const MODULES: { key: string; label: MsgKey; component: ComponentType }[]
   { key: 'topology', label: 'nav.topology', component: Topology },
   { key: 'updates', label: 'nav.updates', component: Updates },
   { key: 'health', label: 'nav.health', component: Health },
+  { key: 'mcp', label: 'nav.mcp', component: Mcp },
   { key: 'hosts', label: 'nav.hosts', component: Hosts },
 ];

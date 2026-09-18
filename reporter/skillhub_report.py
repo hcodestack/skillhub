@@ -24,7 +24,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from adapters import claude_code, codex, tools, workbuddy  # noqa: E402
+from adapters import claude_code, codex, mcp_config, tools, workbuddy  # noqa: E402
 
 # Usage adapters: parse an agent's own logs into call events. Add one per agent
 # that records skill invocations somewhere readable.
@@ -71,7 +71,8 @@ def post(server: str, payload: dict) -> bool:
 def spool(payload: dict) -> None:
     SPOOL_DIR.mkdir(parents=True, exist_ok=True)
     # spooled copies must not deactivate rows later: drop snapshot semantics
-    payload = {**payload, "snapshot_agents": []}
+    # spooled copies must not retire rows later, for MCP declarations either
+    payload = {**payload, "snapshot_agents": [], "mcp_servers": []}
     name = SPOOL_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}-{os.getpid()}.json"
     name.write_text(json.dumps(payload), encoding="utf-8")
     print(f"[skillhub] spooled -> {name}", file=sys.stderr)
@@ -131,11 +132,20 @@ def main() -> int:
     except Exception as e:
         print(f"[skillhub] inventory scan failed: {e}", file=sys.stderr)
 
+    # which MCP servers this machine's tools point at. Skills served over MCP
+    # never land in a skills directory, so the scan above cannot see them; this
+    # is the client-side half of making them visible. Credentials are never read.
+    mcp_servers = []
+    try:
+        mcp_servers = mcp_config.collect(project_roots)
+    except Exception as e:
+        print(f"[skillhub] mcp config scan failed: {e}", file=sys.stderr)
+
     host = args.host_label or socket.gethostname().removesuffix(".local")
     base = {"host": host, "os": f"{platform.system()} {platform.release()}",
             "ts": time.strftime("%Y-%m-%dT%H:%M:%S")}
     print(f"[skillhub] host={host} inventory={len(inventory)} events={len(events)} "
-          f"snapshot={snapshot_agents}")
+          f"mcp={len(mcp_servers)} snapshot={snapshot_agents}")
     if args.dry_run:
         by_agent: dict[str, int] = {}
         for e in events:
@@ -145,7 +155,7 @@ def main() -> int:
 
     payloads = []
     first = {**base, "inventory": inventory, "events": events[:CHUNK],
-             "snapshot_agents": snapshot_agents}
+             "snapshot_agents": snapshot_agents, "mcp_servers": mcp_servers}
     payloads.append(first)
     for i in range(CHUNK, len(events), CHUNK):
         payloads.append({**base, "inventory": [], "events": events[i:i + CHUNK],

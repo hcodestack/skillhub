@@ -184,6 +184,83 @@ def findings(lang: str = "en"):
         "count": len(risky), "items": risky,
     })
 
+    # ── MCP-served skills ──────────────────────────────────────────────────
+    # These never appear in a tool's skills directory: the extension requires
+    # hosts to cache them outside every discovery path. The findings below are
+    # the only place the filesystem view and the served view meet.
+    from .mcp import served_skills
+    import json as _json
+    mcp_skills = served_skills()
+
+    local_names = {r["id"].split("/")[-1].lower()
+                   for r in conn.execute(
+                       "SELECT id FROM skills WHERE in_library=1").fetchall()}
+    local_names |= {r["entry_name"].lower() for r in conn.execute(
+        "SELECT DISTINCT entry_name FROM installs WHERE active=1").fetchall()}
+    collisions = [{"id": s["name"], "where": s["server_name"] or s["endpoint"],
+                   "uri": s["uri"]}
+                  for s in mcp_skills if s["name"].lower() in local_names]
+    sections.append({
+        "key": "mcp_name_collisions", "severity": "warn" if collisions else "info",
+        "title": tr(lang, "he.mcpCollide.title"),
+        "hint": tr(lang, "he.mcpCollide.hint"),
+        "count": len(collisions), "items": collisions,
+    })
+
+    unverified = [{"id": s["name"], "where": s["server_name"] or s["endpoint"],
+                   "reason": s["verifiable"], "uri": s["uri"]}
+                  for s in mcp_skills if s["verifiable"] != "full"]
+    sections.append({
+        "key": "mcp_unverifiable", "severity": "warn" if unverified else "info",
+        "title": tr(lang, "he.mcpUnverified.title"),
+        "hint": tr(lang, "he.mcpUnverified.hint"),
+        "count": len(unverified), "items": unverified,
+    })
+
+    from ..core.mcp import MAX_BYTES, MAX_FILES
+    oversized = [{"id": s["name"], "where": s["server_name"] or s["endpoint"],
+                  "files": s["files"], "bytes": s["bytes"]}
+                 for s in mcp_skills
+                 if s["files"] > MAX_FILES or s["bytes"] > MAX_BYTES]
+    sections.append({
+        "key": "mcp_oversized", "severity": "warn" if oversized else "info",
+        "title": tr(lang, "he.mcpOversized.title"),
+        "hint": tr(lang, "he.mcpOversized.hint"),
+        "count": len(oversized), "items": oversized,
+    })
+
+    elevated = []
+    for s in mcp_skills:
+        try:
+            fm = _json.loads(s["frontmatter"] or "{}")
+        except ValueError:
+            continue
+        want = fm.get("allowed-tools") or fm.get("allowedTools")
+        if want:
+            elevated.append({"id": s["name"],
+                             "where": s["server_name"] or s["endpoint"],
+                             "excerpt": str(want)[:160]})
+    sections.append({
+        "key": "mcp_elevated", "severity": "warn" if elevated else "info",
+        "title": tr(lang, "he.mcpElevated.title"),
+        "hint": tr(lang, "he.mcpElevated.hint"),
+        "count": len(elevated), "items": elevated,
+    })
+
+    unreachable = [dict(r) for r in conn.execute(
+        "SELECT e.endpoint, e.state, e.detail, "
+        "  (SELECT GROUP_CONCAT(DISTINCT d.agent) FROM mcp_declarations d "
+        "   WHERE d.endpoint=e.endpoint AND d.active=1) agents "
+        "FROM mcp_endpoints e WHERE e.state NOT IN ('served','empty','no-extension') "
+        "AND EXISTS(SELECT 1 FROM mcp_declarations d WHERE d.endpoint=e.endpoint "
+        "           AND d.active=1) ORDER BY e.endpoint").fetchall()]
+    sections.append({
+        "key": "mcp_unreachable", "severity": "info",
+        "title": tr(lang, "he.mcpUnreachable.title"),
+        "hint": tr(lang, "he.mcpUnreachable.hint"),
+        "count": len(unreachable), "items": unreachable,
+    })
+
     never = [dict(r) for r in conn.execute(
         "SELECT s.id, s.name, s.source, s.category FROM skills s "
         "WHERE s.in_library=1 "
