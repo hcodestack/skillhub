@@ -48,6 +48,7 @@ hand anymore:
 | 📋 **Findings → action** | Export a governance report (paste it to your agent as a work order) or a reviewable remediation script whose *uncommented* commands are provably safe |
 | 🤖 **MCP native** | Seven read-only tools let Claude Code / Codex query the hub directly: *"which skills does nobody use?" "is X safe?" "fetch the remediation plan"* — your agent executes, with your confirmation, on the machine where the files are |
 | 🖥 **Runs anywhere** | One machine (built-in self-reporter, zero cron), Docker, or a LAN hub on a home server/NAS aggregating every machine you work on |
+| 🔌 **Sees skills served over MCP** | A skill served over MCP ([SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640)) is never installed — the extension requires hosts to cache it outside every skill-discovery path, so a scanner cannot see it. Skillhub reads which servers your tools point at, asks the ones it can, and reports what they serve and what it costs you in context |
 | 🌍 **English and 中文** | The UI ships in English and switches to Simplified Chinese from the header — including the text the server composes (health findings, the exported governance report). One catalog per side, two strings per message, so translations cannot drift |
 | 🔒 **Read-only by design** | Skillhub observes; your existing workflow keeps managing. It can never fight your tooling or move your files |
 
@@ -152,19 +153,25 @@ Any host (laptop, home server, NAS)            each machine you work on
 │ server/  FastAPI + SQLite    │ ◄─────────── │ reporter/skillhub_report.py  │
 │  · scans your skills library │  /api/v1/    │  · scans 47+ tool entry dirs │
 │  · background: upstream      │   report     │  · parses session logs       │
-│    checks, safety review     │              │    incrementally (cursors)   │
+│    checks, safety review,    │              │    incrementally (cursors)   │
+│    MCP skill discovery       │              │  · reads MCP server configs  │
 │  · web/ SPA (React 19)       │              │  · offline spool + catch-up  │
 └──────────────────────────────┘              │  pure stdlib, zero deps      │
-        ▲                                     └──────────────────────────────┘
-        └──────────────────────────────────── ┌──────────────────────────────┐
-              HTTP GET  /api/v1/*             │ mcp/skillhub_mcp.py          │
-                                              │ read-only, stdio ↔ your agent│
-                                              └──────────────────────────────┘
+   │    ▲                                     └──────────────────────────────┘
+   │    └─────────────────────────────────────┌──────────────────────────────┐
+   │          HTTP GET  /api/v1/*             │ mcp/skillhub_mcp.py          │
+   │                                          │ read-only, stdio ↔ your agent│
+   │                                          └──────────────────────────────┘
+   └──► the MCP servers your tools already point at:
+        initialize + skills/list only, anonymous, never stdio
 ```
 
 The server is the only required part. Skill ids are simply paths relative to
 your library root — the hub scans for `SKILL.md` folders itself; an external
 index file is optional for setups that already maintain a catalog.
+
+Everything above reads. The single outbound path is the MCP probe, and it is
+bounded to two read-only methods; see [Skills served over MCP](#-skills-served-over-mcp).
 
 ## ⚙️ Configuration
 
@@ -184,6 +191,72 @@ Everything is environment variables; only the first is required.
 
 > **Note** · The dashboard has no authentication — it binds to `127.0.0.1` by
 > default. Set `SKILLHUB_HOST=0.0.0.0` only on a network you trust.
+
+## 🔌 Skills served over MCP
+
+Skills no longer only live on disk. [SEP-2640][sep] merged the Skills extension
+into MCP on 2026-09-13, so a server can serve skills alongside its tools. The
+extension also requires a host to cache what it fetches **outside every
+skill-discovery path** — so nothing lands in a tool's skills directory, and a
+scanner like this one is blind to those skills by design.
+
+Left alone, that turns into the failure this project exists to catch: the
+dashboard reporting a confident number while the agent quietly runs skills it
+has no idea exist. The **MCP** tab closes the gap.
+
+**These skills are reachable, not loaded.** They have no local footprint and no
+link state, so they get their own vocabulary rather than a fifth kind of link.
+What they cost is their name and description in every turn's context, and
+nothing else until one is actually used — so that number leads, next to the
+resident cost of your local skills on the overview.
+
+### What it does, and what it refuses to do
+
+Only `initialize` and `skills/list` are ever sent, both read-only. No tool is
+called and no skill content is fetched: the listing is a complete manifest, and
+the extension designed it to be enough. Three boundaries hold the rest:
+
+| Boundary | Why |
+|---|---|
+| **Credentials are never read** | An `env` or `headers` block in your MCP config becomes a single boolean. The values never leave the function that saw them, and the probe is always anonymous. A server that wants authentication is recorded as wanting it, and left alone. |
+| **stdio servers are never started** | Enumerating one means spawning a process, and spawning a process is running a command on your machine rather than observing it. |
+| **Loopback endpoints are never probed** | `localhost` names a different machine to everyone who reads it. A hub connecting to one would reach some unrelated service on its own box, not the server that was meant. |
+
+Six endpoint states, two of them deliberate refusals rather than failures:
+
+| State | Meaning |
+|---|---|
+| **Serving** | Declares the extension and enumerated what it serves |
+| **Serving, not enumerable** | Declares it but returns no listing — allowed, for catalogs that are large, generated on demand, or behind a gateway |
+| **No skills extension** | An MCP server, but tools and resources only |
+| **Needs authentication** | Deliberately not probed |
+| **Declared, not started** | A stdio server, deliberately not started |
+| **Unreachable** | Configured here, and the probe could not complete |
+
+### What it finds
+
+Five health findings come from reconciling the served view against the
+filesystem one:
+
+- **Name collisions** with a local skill. The spec calls this an impersonation
+  surface and asks hosts to surface it, since a name binds to whatever bytes its
+  origin currently serves and carries no authorship.
+- **Entries that cannot be content-bound**, because the listing is `dynamic` or
+  a file is missing its digest or size. Approval is supposed to pin to an exact
+  file set; these cannot.
+- **Skills over the protocol's limits** of 512 files or 16 MiB, which are not
+  guaranteed to load in any conforming host.
+- **Frontmatter asking for wider permissions.** A remote server writing
+  `allowed-tools` is requesting access on your machine, not describing its own.
+- **Servers configured but not reachable.**
+
+No configuration is needed. Servers are discovered from the configs your tools
+already keep, and probing runs as a background job, never in a request.
+
+> **Ecosystem status** · The extension is `final` but young. The official SDKs
+> are still landing support and few hosts consume it yet, so expect most of your
+> servers to report *no skills extension* for now. This was verified against
+> [Hugging Face's MCP server][hf], which implements the extension in full.
 
 ## 🌍 Language
 
@@ -235,6 +308,36 @@ signals for a human (or your agent) to judge, never silent verdicts.
 - **No chat memory** — transcripts already live where your tools keep them
 - **No write operations on your skills** — the one hub-side write is the
   optional git fast-forward button, and the MCP surface is read-only
+
+## 📚 References
+
+**The Skills extension**
+
+- [SEP-2640: Skills Extension][sep] — the proposal, merged `final` on 2026-09-13
+- [modelcontextprotocol/ext-skills][ext] — the stable specification, its design
+  rationale, and the running list of implementations
+- [Extension Support Matrix][matrix] — which MCP clients consume which official
+  extensions
+- [Agent Skills specification][agentskills] — the skill format itself, which
+  SEP-2640 delegates to rather than redefining
+- [Model Context Protocol][mcp] — the base protocol
+
+**Prior art this project builds on**
+
+- [qufei1993/skills-hub][skillshub] (MIT) — the tool directory table behind the
+  47-tool coverage, the `SKILL.md` validity check, and the content-hash approach
+  to duplicate and drift detection. Its UI guidelines are also why mutually
+  exclusive views here are segmented controls rather than switches.
+- [@lobehub/icons-static-svg][lobehub] (MIT) — the tool brand marks
+
+[sep]: https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640
+[ext]: https://github.com/modelcontextprotocol/ext-skills
+[matrix]: https://modelcontextprotocol.io/extensions/client-matrix
+[agentskills]: https://agentskills.io/specification
+[mcp]: https://modelcontextprotocol.io
+[hf]: https://github.com/huggingface/hf-mcp-server
+[skillshub]: https://github.com/qufei1993/skills-hub
+[lobehub]: https://github.com/lobehub/lobe-icons
 
 ## 📄 License
 
